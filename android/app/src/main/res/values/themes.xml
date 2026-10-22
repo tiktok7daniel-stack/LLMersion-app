@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.LumenRead" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorSecondary">@color/accent</item>
+        <item name="colorOnSecondary">@color/ink</item>
+        <item name="colorTertiary">@color/accent</item>
+        <item name="android:colorBackground">@color/surface</item>
+        <item name="colorSurface">@color/card</item>
+        <item name="colorOnSurface">@color/text</item>
+        <item name="colorOnBackground">@color/text</item>
+        <item name="android:windowBackground">@color/surface</item>
+        <item name="android:statusBarColor">@color/surface</item>
+        <item name="android:navigationBarColor">@color/surface</item>
+        <item name="android:windowLightStatusBar">@bool/light_bars</item>
+    </style>
+
+    <!-- true black for OLED screens; selected in Settings, applied before setContentView -->
+    <style name="Theme.LumenRead.Black" parent="Theme.LumenRead">
+        <item name="android:colorBackground">#000000</item>
+        <item name="android:windowBackground">#000000</item>
+        <item name="colorSurface">#0A0F1A</item>
+        <item name="android:statusBarColor">#000000</item>
+        <item name="android:navigationBarColor">#000000</item>
+    </style>
+
+    <!-- shown while the app starts: the logo on paper -->
+    <style name="Theme.LumenRead.Launch" parent="Theme.LumenRead">
+        <item name="android:windowBackground">@drawable/splash</item>
+    </style>
+</resources>

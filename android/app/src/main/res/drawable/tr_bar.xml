@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- a thin rule on the inline-start side of the translation (right side in RTL) -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:width="2dp" android:gravity="start|fill_vertical">
+        <shape><solid android:color="@color/accent" /></shape>
+    </item>
+</layer-list>

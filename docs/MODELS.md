@@ -19,3 +19,13 @@ before redistributing anything.
 
 The code is MIT. Select the translation model with `PR_MT_MODEL_AR` / `PR_MT_BACKEND_AR`, or in
 Settings → Translation aid.
+
+## Android app
+
+| Role | Component | License |
+|---|---|---|
+| Translation, OCR | Google ML Kit (on-device) | Google APIs Terms of Service; models download on first use |
+| PDF text | PdfBox-Android | Apache-2.0 |
+| IPA | CMU Pronouncing Dictionary (via `cmu-pronouncing-dictionary`) | BSD-style / ISC |
+| Definitions | Princeton WordNet 3.0 (via `wordnet-db`) | WordNet licence (permissive) |
+| Voice, speech recognition | the phone's system services | — |

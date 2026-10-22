@@ -2,14 +2,142 @@
 <resources>
     <string name="app_name" translatable="false">LumenRead</string>
     <string name="tagline">Read. Listen. Speak. Understand.</string>
-    <string name="connect_title">Connect to your LumenRead server</string>
-    <string name="connect_body">LumenRead runs its models on your own computer. Start the server there, then enter its address here. Nothing is sent to anyone else.</string>
-    <string name="server_hint">Server address, for example http://192.168.1.20:8848</string>
-    <string name="token_hint">Access token (only if you set PR_TOKEN)</string>
-    <string name="connect">Connect</string>
-    <string name="change_server">Change server</string>
-    <string name="bad_url">Enter an address that starts with http:// or https://</string>
-    <string name="load_failed">Cannot reach the server. Check that it is running and that the phone is on the same network.</string>
-    <string name="retry">Try again</string>
-    <string name="mic_needs_secure">The microphone only works on https:// or http://localhost. See the README for how to set that up.</string>
+    <string name="subtitle">Learn English by listening, speaking, and reading.</string>
+
+    <!-- library -->
+    <string name="open_file">Open PDF or text</string>
+    <string name="paste_text">Paste text</string>
+    <string name="paste_title">Paste English text</string>
+    <string name="paste_hint">Paste a paragraph, an article, a lesson…</string>
+    <string name="doc_title_hint">Title (optional)</string>
+    <string name="pasted_title">Pasted text</string>
+    <string name="recent">Recent documents</string>
+    <string name="no_docs">No documents yet. Open a PDF or paste some English text to start.</string>
+    <string name="vocabulary">Vocabulary</string>
+    <string name="settings">Settings</string>
+    <string name="about">About</string>
+    <string name="tutor">Tutor (server)</string>
+    <string name="pages_n">Pages: %1$d</string>
+    <string name="opening">Opening the document…</string>
+    <string name="ocr_progress">Reading scanned page %1$d of %2$d…</string>
+    <string name="open_failed">Could not open the file: %1$s</string>
+    <string name="no_text">No readable text was found in this file.</string>
+    <string name="scanned_no_ocr">This PDF is scanned. Turn on OCR in Settings to read it.</string>
+    <string name="ocr_skipped">Some pages had no text and were skipped.</string>
+    <string name="arabic_doc">This document is in Arabic. It is shown but not read aloud.</string>
+    <string name="preparing_dict">Preparing the offline dictionary (first run only)…</string>
+    <string name="delete_doc">Delete document</string>
+
+    <!-- onboarding -->
+    <string name="welcome">Welcome to LumenRead</string>
+    <string name="welcome_body">Choose your interface language. You can change it and everything else later in Settings.</string>
+    <string name="welcome_translation">Show a translation under each paragraph</string>
+    <string name="get_started">Get started</string>
+
+    <!-- reader -->
+    <string name="page_n">Page %1$d</string>
+    <string name="go_to_page">Go to page</string>
+    <string name="page_number_hint">Page number (1–%1$d)</string>
+    <string name="go">Go</string>
+    <string name="cancel">Cancel</string>
+    <string name="ok">OK</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="prev_sentence">Previous sentence</string>
+    <string name="next_sentence">Next sentence</string>
+    <string name="prev_paragraph">Previous paragraph</string>
+    <string name="next_paragraph">Next paragraph</string>
+    <string name="practice">Say this sentence</string>
+    <string name="speed">Speed</string>
+    <string name="speed_value">%1$s×</string>
+    <string name="translation">Translation</string>
+    <string name="translating">…</string>
+    <string name="downloading_model">Downloading the translation model (once, about 30 MB)…</string>
+    <string name="translation_failed">Translation is not available: %1$s</string>
+    <string name="tts_missing">No English voice is installed. Install one in the phone\'s text-to-speech settings.</string>
+    <string name="tts_settings">Open settings</string>
+    <string name="resumed">Back where you stopped</string>
+
+    <!-- word -->
+    <string name="meaning">Meaning</string>
+    <string name="definition">Definition</string>
+    <string name="listen">Listen</string>
+    <string name="read_from_here">Read from here</string>
+    <string name="remove_word">Remove from vocabulary</string>
+    <string name="removed">Removed</string>
+    <string name="saved_auto">Saved to your vocabulary</string>
+    <string name="not_found">(not found)</string>
+
+    <!-- speaking practice -->
+    <string name="listening">Listening… read the sentence aloud.</string>
+    <string name="you_said">You said</string>
+    <string name="score_n">Score: %1$d%%</string>
+    <string name="all_words_ok">Every word was recognised. Well done!</string>
+    <string name="missed_words">Words to practise: %1$s</string>
+    <string name="no_speech">Nothing was heard. Try again a little closer to the microphone.</string>
+    <string name="no_recognizer">Speech recognition is not available on this phone.</string>
+    <string name="mic_denied">Microphone permission was denied.</string>
+    <string name="try_again">Try again</string>
+
+    <!-- vocabulary and flashcards -->
+    <string name="vocab_empty">No words yet. Tap a word while reading and it is saved here.</string>
+    <string name="vocab_count">Words: %1$d · Learned: %2$d</string>
+    <string name="flashcards">Flashcards</string>
+    <string name="share_csv">Share as CSV</string>
+    <string name="show_gloss_back">Show the meaning on the back of the card</string>
+    <string name="tap_to_flip">Tap the card to turn it over</string>
+    <string name="again">Again</string>
+    <string name="hard">Hard</string>
+    <string name="good">Good</string>
+    <string name="easy">Easy</string>
+    <string name="card_n">%1$d / %2$d</string>
+    <string name="no_cards">No words to practise.</string>
+    <string name="delete">Delete</string>
+    <string name="mark_known">Mark as learned</string>
+    <string name="learned">Learned</string>
+
+    <!-- settings -->
+    <string name="s_language">Interface language</string>
+    <string name="lang_system">System</string>
+    <string name="lang_en" translatable="false">English</string>
+    <string name="lang_ar" translatable="false">العربية</string>
+    <string name="s_theme">Theme</string>
+    <string name="theme_system">Follow the system</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_black">Black (OLED)</string>
+    <string name="s_translation_section">Translation aid</string>
+    <string name="s_show_translation">Show the translation under each paragraph</string>
+    <string name="s_target">Translate into</string>
+    <string name="target_ar">Arabic</string>
+    <string name="target_zh">Chinese</string>
+    <string name="s_reading_section">Reading aloud</string>
+    <string name="s_voice">Voice</string>
+    <string name="voice_default">Phone default</string>
+    <string name="s_speed">Reading speed</string>
+    <string name="s_pdf_section">PDF and scanned pages</string>
+    <string name="s_ocr">Read scanned pages with OCR</string>
+    <string name="s_ocr_note">Works on English text. Arabic scans are not recognised on the phone.</string>
+    <string name="s_data_section">Data and privacy</string>
+    <string name="s_clear_translations">Clear translation cache</string>
+    <string name="s_clear_documents">Clear document cache</string>
+    <string name="cleared">Cleared</string>
+    <string name="confirm_clear">Delete this cached data? It is rebuilt when needed. Your vocabulary is kept.</string>
+    <string name="s_server">Tutor server (optional)</string>
+    <string name="s_server_note">The conversation tutor and writing feedback need a larger AI model than a phone can run. If you run the LumenRead server on your computer, enter its address here.</string>
+    <string name="server_hint">http://192.168.1.20:8848</string>
+    <string name="not_set">Not set</string>
+    <string name="privacy">Everything runs on this phone. After the one-time download of the translation model nothing is sent anywhere: no account, no telemetry, and no audio or text leaves your device.</string>
+
+    <!-- about -->
+    <string name="version_n">Version %1$s</string>
+    <string name="about_privacy_title">Privacy</string>
+    <string name="about_upstream_title">Built on LLMersion</string>
+    <string name="about_upstream">LumenRead is a fork of LLMersion-1, the open-source reference implementation of the LLMersion scheme (Guo et al., arXiv:2609.29672): a local-first AI framework for low-cost home language learning. Source: github.com/QM378/LLMersion</string>
+    <string name="about_license_title">Licenses</string>
+    <string name="about_license">Code: MIT License, including the original LLMersion copyright notice.\n\nOn-device translation and OCR: Google ML Kit (Google APIs Terms; models download on first use).\nPDF text: PdfBox-Android (Apache-2.0).\nPronunciations: CMU Pronouncing Dictionary (BSD-style).\nDefinitions: Princeton WordNet 3.0 (WordNet licence).\nReading voice and speech recognition: your phone\'s system services.</string>
+
+    <!-- tutor -->
+    <string name="tutor_needs_server">Set the tutor server address in Settings first.</string>
+    <string name="tutor_unreachable">Cannot reach the tutor server. Check that it is running and on the same network.</string>
 </resources>

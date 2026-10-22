@@ -50,4 +50,4 @@ jobs:
           gh release create apk-latest LumenRead-debug.apk \
             --target "${GITHUB_SHA}" --prerelease \
             --title "LumenRead APK (latest build)" \
-            --notes "Debug APK built from ${GITHUB_SHA::7} on ${GITHUB_REF_NAME}. Install on Android 7+ (allow installing from unknown sources). The app connects to a LumenRead server you run on your computer — see android/README.md."
+            --notes "LumenRead for Android, built from ${GITHUB_SHA::7}. A standalone app: reading aloud, Arabic translation, PDF import, dictionary, flashcards and pronunciation practice all run on the phone. Install on Android 7+ (allow installing from unknown sources). The first translation downloads a ~30 MB language model once."

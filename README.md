@@ -86,19 +86,14 @@ look for `LUMEN_CHROMIUM` or a system Chromium and are skipped otherwise.
 
 ## Android app
 
-`android/` is a native Android app (Java, `WebView`, no third-party dependencies). The models are too
-large to run inside a phone app, so the app is the **front end for your own LumenRead server**: start
-the server on your computer (`PR_HOST=0.0.0.0 PR_TOKEN=secret python -m server.main`), enter its
-address in the app once, and use LumenRead on the phone: microphone, PDF picker, Arabic RTL and all.
+`android/` is a **standalone Android app** — no computer, no browser. Reading aloud (phone TTS,
+0.5×–1.5×, sentence highlight), English→Arabic translation under paragraphs (ML Kit, on the
+device), word tap with IPA + definition + Arabic meaning (bundled dictionary), PDF import with
+page jump and OCR, vocabulary with spaced-repetition flashcards, pronunciation practice, and the
+Arabic/English RTL interface with light, dark and black themes. The tutor and writing correction
+are optional and use the LumenRead server when you have one. See `android/README.md`.
 
-- Build: open `android/` in Android Studio, or `cd android && gradle assembleDebug`; CI builds it in
-  `.github/workflows/android.yml` and uploads the APK.
-- Microphone: Android only allows the microphone on `https://` or `http://localhost`. Use
-  `adb reverse tcp:8848 tcp:8848` and the address `http://localhost:8848`, or put the server behind
-  HTTPS. Reading, translation, vocabulary and writing work over plain `http://` on your network.
-- **Status:** the project and its Java source were written but **not compiled or run** in the
-  environment this fork was prepared in (no Android SDK was reachable). Expect to fix small build
-  issues on first build.
+Get the APK from the **Android APK** GitHub Actions workflow (release `apk-latest`).
 
 ## Configuration
 
@@ -148,7 +143,7 @@ architecture is unchanged and Chinese remains supported (`translation target = C
 - Numerals are Latin digits in both languages by design.
 - Reader keyboard shortcuts (←/→) follow the English text and are not mirrored; flashcard navigation
   keys are mirrored.
-- The Android app needs a running server and was not built in this environment (see above).
+- On the phone the tutor and writing correction need the optional server; Arabic scanned-PDF OCR is desktop-only.
 
 Extension points: add a UI language by adding `web/i18n/<code>.json` (the parity test checks it) and
 listing it in `layout.js`/`i18n.js`; add a translator in `server/mt/`, a voice in `server/engines/`, a

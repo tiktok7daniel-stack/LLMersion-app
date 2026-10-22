@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical">
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar" android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize" />
+    <com.google.android.material.progressindicator.LinearProgressIndicator
+        android:id="@+id/rail" android:layout_width="match_parent"
+        android:layout_height="wrap_content" app:indicatorColor="@color/accent" />
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/card" android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" android:layout_margin="20dp" app:cardCornerRadius="20dp"
+        android:clickable="true" android:focusable="true">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
+            android:orientation="vertical" android:gravity="center" android:padding="24dp">
+            <TextView android:id="@+id/word" android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:textSize="40sp" android:textStyle="bold"
+                android:fontFamily="serif" android:textColor="@color/text" android:textDirection="ltr" />
+            <TextView android:id="@+id/ipa" android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:textSize="18sp"
+                android:textColor="@color/text2" android:layout_marginTop="8dp" android:textDirection="ltr" />
+            <TextView android:id="@+id/gloss" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:textSize="26sp" android:gravity="center"
+                android:textColor="@color/text" android:layout_marginTop="28dp" />
+            <TextView android:id="@+id/ctx" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:textSize="15sp" android:gravity="center"
+                android:textColor="@color/text2" android:layout_marginTop="16dp"
+                android:fontFamily="serif" android:textDirection="ltr" />
+            <TextView android:id="@+id/hint" android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:text="@string/tap_to_flip"
+                android:textColor="@color/text3" android:textSize="13sp" android:layout_marginTop="28dp" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+    <LinearLayout android:id="@+id/grades" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:orientation="horizontal"
+        android:paddingStart="12dp" android:paddingEnd="12dp">
+        <com.google.android.material.button.MaterialButton android:id="@+id/g0"
+            style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="0dp"
+            android:layout_weight="1" android:layout_height="wrap_content" android:text="@string/again"
+            android:layout_marginEnd="4dp" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/g1"
+            style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="0dp"
+            android:layout_weight="1" android:layout_height="wrap_content" android:text="@string/hard"
+            android:layout_marginEnd="4dp" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/g2"
+            style="@style/Widget.Material3.Button.TonalButton" android:layout_width="0dp"
+            android:layout_weight="1" android:layout_height="wrap_content" android:text="@string/good"
+            android:layout_marginEnd="4dp" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/g3"
+            android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
+            android:text="@string/easy" />
+    </LinearLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:gravity="center" android:padding="8dp">
+        <ImageButton android:id="@+id/prev" style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="48dp" android:layout_height="48dp"
+            android:src="@drawable/ic_back" android:contentDescription="@string/prev_sentence" />
+        <ImageButton android:id="@+id/say" style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="48dp" android:layout_height="48dp" android:layout_marginStart="24dp"
+            android:layout_marginEnd="24dp"
+            android:src="@drawable/ic_volume" android:contentDescription="@string/listen" />
+        <ImageButton android:id="@+id/next" style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="48dp" android:layout_height="48dp" android:rotationY="180"
+            android:src="@drawable/ic_back" android:contentDescription="@string/next_sentence" />
+    </LinearLayout>
+</LinearLayout>

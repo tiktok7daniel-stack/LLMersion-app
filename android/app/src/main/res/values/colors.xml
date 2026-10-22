@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- brand palette -->
+    <color name="primary">#1D4ED8</color>
+    <color name="accent">#F59E0B</color>
+    <color name="ink">#0F172A</color>
+    <color name="paper">#F8FAFC</color>
+    <color name="dark_surface">#0B1220</color>
+
+    <color name="surface">#F8FAFC</color>
+    <color name="card">#FFFFFF</color>
+    <color name="text">#0F172A</color>
+    <color name="text2">#475569</color>
+    <color name="text3">#64748B</color>
+    <color name="rule">#E2E8F0</color>
+    <color name="highlight">#66F59E0B</color>
+    <color name="good">#166534</color>
+    <color name="mid">#92400E</color>
+    <color name="poor">#B91C1C</color>
+</resources>

@@ -1,17 +1,32 @@
 # LumenRead for Android
 
-A native shell (Java, `android.webkit.WebView`, no third-party libraries) around the LumenRead web
-interface served by **your own computer**. The translation, voice, tutor and OCR models run there; the
-phone shows the bilingual (English / Arabic, RTL) interface, records your voice, and opens PDFs with the
-system file picker.
+A standalone phone app (Kotlin, Material 3). It does **not** need a computer or a browser:
 
-1. On the computer: `PR_HOST=0.0.0.0 PR_TOKEN=choose-a-secret python -m server.main`
-2. Install the APK (`gradle assembleDebug`, or download the artifact from the *Android APK* workflow).
-3. Open the app, enter `http://<computer-ip>:8848` (and the token). Change it later from the error
-   screen or by clearing the app's data.
+| Feature | How it works on the phone |
+|---|---|
+| Read aloud, 0.5×–1.5× (default 0.8×), sentence highlight | the phone's own English text-to-speech, one utterance per sentence |
+| Translation under each paragraph (Arabic or Chinese) | Google ML Kit on-device translation; the language model downloads once (~30 MB), then works offline |
+| Tap a word: IPA, English definition, Arabic meaning | bundled dictionary (CMU pronunciations + WordNet definitions, `assets/dict.tsv.gz`) + ML Kit |
+| PDF import, page by page, "go to page" | PdfBox-Android; files cached by hash |
+| Scanned PDFs | ML Kit on-device OCR (Latin script; Arabic scans are not supported on the phone) |
+| Vocabulary + spaced-repetition flashcards | SQLite; English front, Arabic back (optional) |
+| Pronunciation practice | the phone's speech recognition; word-by-word score of the sentence you read |
+| Arabic / English interface, RTL, light / dark / black | Android resources (`values`, `values-ar`), `supportsRtl`, auto-mirrored icons |
 
-Microphone: Android only exposes it to `https://` pages or `http://localhost`. Run
-`adb reverse tcp:8848 tcp:8848` and use `http://localhost:8848`, or serve the app over HTTPS.
+The conversation tutor and writing correction need a large language model that a phone cannot
+run; they are an optional extra screen that connects to the LumenRead server if you run one
+(Settings → Tutor server).
 
-Requirements: JDK 17, Android SDK 34, Gradle 8.9. `minSdk 24`. The launcher icon is generated from
-`web/brand` (see `tools/build_brand.py`). **Not yet compiled in the environment this was written in.**
+## Get the APK
+
+GitHub → Actions → **Android APK** → run it (or push to `android/`). The APK is attached to the
+`apk-latest` release and to the run's artifacts. On the phone: download, allow "install unknown
+apps", install.
+
+## Build locally
+
+JDK 17, Android SDK 34, Gradle 8.9: `cd android && gradle assembleDebug` →
+`app/build/outputs/apk/debug/app-debug.apk`.
+
+Regenerate the bundled dictionary with `tools/build_android_dict.py` and the launcher icons with
+`tools/build_brand.py`.

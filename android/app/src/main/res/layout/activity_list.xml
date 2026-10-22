@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical">
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar" android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize" />
+    <TextView android:id="@+id/stat" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:textColor="@color/text3"
+        android:paddingStart="20dp" android:paddingEnd="20dp" android:paddingBottom="4dp" />
+    <com.google.android.material.materialswitch.MaterialSwitch
+        android:id="@+id/glossSwitch" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:text="@string/show_gloss_back"
+        android:paddingStart="20dp" android:paddingEnd="20dp" />
+    <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+        <androidx.recyclerview.widget.RecyclerView android:id="@+id/list"
+            android:layout_width="match_parent" android:layout_height="match_parent" />
+        <TextView android:id="@+id/empty" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:text="@string/vocab_empty"
+            android:textColor="@color/text3" android:gravity="center" android:padding="32dp"
+            android:visibility="gone" />
+    </FrameLayout>
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/flashBtn" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:layout_margin="12dp"
+        android:text="@string/flashcards" app:icon="@drawable/ic_cards" />
+</LinearLayout>

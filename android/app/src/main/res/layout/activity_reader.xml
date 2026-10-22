@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar" android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize" />
+
+    <com.google.android.material.progressindicator.LinearProgressIndicator
+        android:id="@+id/progress" android:layout_width="match_parent"
+        android:layout_height="wrap_content" app:indicatorColor="@color/accent" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/list" android:layout_width="match_parent"
+        android:layout_height="0dp" android:layout_weight="1"
+        android:paddingStart="16dp" android:paddingEnd="16dp" android:clipToPadding="false"
+        android:paddingBottom="24dp" />
+
+    <LinearLayout android:id="@+id/controls"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:gravity="center"
+        android:background="@color/card" android:elevation="8dp"
+        android:paddingTop="6dp" android:paddingBottom="6dp">
+        <ImageButton android:id="@+id/prevPara" style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="48dp" android:layout_height="48dp"
+            android:src="@drawable/ic_prev" android:contentDescription="@string/prev_paragraph" />
+        <ImageButton android:id="@+id/prevSent" style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="48dp" android:layout_height="48dp"
+            android:src="@drawable/ic_back" android:contentDescription="@string/prev_sentence" />
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/play" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginStart="8dp" android:layout_marginEnd="8dp"
+            app:fabSize="normal" android:src="@drawable/ic_play"
+            android:contentDescription="@string/play" />
+        <ImageButton android:id="@+id/nextSent" style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="48dp" android:layout_height="48dp" android:rotationY="180"
+            android:src="@drawable/ic_back" android:contentDescription="@string/next_sentence" />
+        <ImageButton android:id="@+id/nextPara" style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="48dp" android:layout_height="48dp"
+            android:src="@drawable/ic_next" android:contentDescription="@string/next_paragraph" />
+        <ImageButton android:id="@+id/practice" style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="48dp" android:layout_height="48dp" android:layout_marginStart="8dp"
+            android:src="@drawable/ic_mic" android:contentDescription="@string/practice" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/speed" style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:minWidth="56dp" android:textDirection="ltr" />
+    </LinearLayout>
+</LinearLayout>
