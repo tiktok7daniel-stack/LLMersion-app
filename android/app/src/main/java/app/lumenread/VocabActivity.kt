@@ -65,16 +65,15 @@ class VocabActivity : BaseActivity() {
 
     /** Words saved while the other translation language was active get their gloss now. */
     private suspend fun fillGlosses() {
-        val target = Prefs.target
-        words.filter { it.gloss(target).isEmpty() }.take(40).forEach { w ->
-            val g = try { Tr.translate(w.word, target) } catch (e: Exception) { return }
-            withContext(Dispatchers.IO) { Db.setGloss(w.word, target, g) }
-            val i = words.indexOfFirst { it.word == w.word }
-            if (i >= 0) {
-                words = words.toMutableList().also {
-                    it[i] = if (target == "zh") w.copy(zh = g) else w.copy(ar = g)
+        for (lang in Prefs.wordLangs) {
+            words.filter { it.gloss(lang).isEmpty() }.take(40).forEach { w ->
+                val g = try { Tr.translate(w.word, lang) } catch (e: Exception) { return }
+                withContext(Dispatchers.IO) { Db.setGloss(w.word, lang, g) }
+                val i = words.indexOfFirst { it.word == w.word }
+                if (i >= 0) {
+                    words = words.toMutableList().also { it[i] = it[i].withGloss(lang, g) }
+                    list.adapter?.notifyItemChanged(i)
                 }
-                list.adapter?.notifyItemChanged(i)
             }
         }
     }
@@ -88,9 +87,9 @@ class VocabActivity : BaseActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId != 1) return super.onOptionsItemSelected(item)
         val csv = buildString {
-            append("word,ipa,arabic,chinese,context\n")
+            append("word,ipa,arabic,italian,chinese,context\n")
             words.forEach { w ->
-                listOf(w.word, w.ipa, w.ar, w.zh, w.context).joinTo(this, ",") { "\"" + it.replace("\"", "\"\"") + "\"" }
+                listOf(w.word, w.ipa, w.ar, w.it, w.zh, w.context).joinTo(this, ",") { "\"" + it.replace("\"", "\"\"") + "\"" }
                 append('\n')
             }
         }
@@ -115,9 +114,10 @@ class VocabActivity : BaseActivity() {
             val w = words[i]
             h.word.text = if (w.ipa.isNotEmpty()) "${w.word}  /${w.ipa}/" else w.word
             h.word.alpha = if (w.known) 0.5f else 1f
-            val target = Prefs.target
-            h.gloss.text = w.gloss(target)
-            h.gloss.textDirection = if (target == "ar") View.TEXT_DIRECTION_RTL else View.TEXT_DIRECTION_LTR
+            // e.g. "مضيء · luminoso" — each meaning keeps its own direction (Unicode isolates)
+            h.gloss.text = Prefs.wordLangs.map { w.gloss(it) }.filter { it.isNotEmpty() }
+                .joinToString("  ·  ") { "\u2068$it\u2069" }
+            h.gloss.textDirection = View.TEXT_DIRECTION_LOCALE
             h.gloss.textAlignment = View.TEXT_ALIGNMENT_VIEW_START
             h.itemView.findViewById<View>(R.id.say).setOnClickListener { speaker?.speak(w.word, "w") }
             h.itemView.findViewById<View>(R.id.del).setOnClickListener {

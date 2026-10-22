@@ -81,25 +81,32 @@ class FlashcardActivity : BaseActivity() {
         rail.progress = i + 1
         word.text = w.word
         ipa.text = if (w.ipa.isNotEmpty()) "/${w.ipa}/" else ""
-        val target = Prefs.target
-        gloss.textDirection = if (target == "ar") View.TEXT_DIRECTION_RTL else View.TEXT_DIRECTION_LTR
+        val langs = Prefs.wordLangs
+        // one meaning per line; each line takes the direction of its own first letter
+        gloss.textDirection = View.TEXT_DIRECTION_FIRST_STRONG
         gloss.visibility = if (back && Prefs.flashGloss) View.VISIBLE else View.GONE
         ctx.visibility = if (back && w.context.isNotEmpty()) View.VISIBLE else View.GONE
         ctx.text = w.context
         hint.visibility = if (back) View.GONE else View.VISIBLE
         grades.alpha = if (back) 1f else 0.4f
         grades.isEnabled = back
-        gloss.text = w.gloss(target).ifEmpty { "…" }
-        if (back && Prefs.flashGloss && w.gloss(target).isEmpty()) {
+        gloss.text = langs.joinToString("\n") { w.gloss(it).ifEmpty { "…" } }
+        val missing = langs.filter { w.gloss(it).isEmpty() }
+        if (back && Prefs.flashGloss && missing.isNotEmpty()) {
             lifecycleScope.launch {
-                val g = try { Tr.translate(w.word, target) } catch (e: Exception) { "" }
-                if (g.isNotEmpty()) {
-                    withContext(Dispatchers.IO) { Db.setGloss(w.word, target, g) }
-                    cards = cards.toMutableList().also {
-                        it[i] = if (target == "zh") w.copy(zh = g) else w.copy(ar = g)
+                var cur = w
+                for (lang in missing) {
+                    val g = try { Tr.translate(w.word, lang) } catch (e: Exception) { "" }
+                    if (g.isNotEmpty()) {
+                        withContext(Dispatchers.IO) { Db.setGloss(w.word, lang, g) }
+                        cur = cur.withGloss(lang, g)
                     }
                 }
-                if (cards.getOrNull(i)?.word == w.word) gloss.text = g.ifEmpty { getString(R.string.not_found) }
+                val idx = cards.indexOfFirst { it.word == w.word }
+                if (idx >= 0) cards = cards.toMutableList().also { it[idx] = cur }
+                if (cards.getOrNull(i)?.word == w.word) {
+                    gloss.text = langs.joinToString("\n") { cur.gloss(it).ifEmpty { getString(R.string.not_found) } }
+                }
             }
         }
     }

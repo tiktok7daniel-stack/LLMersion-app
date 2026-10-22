@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tagline">Leggi. Ascolta. Parla. Capisci.</string>
+    <string name="subtitle">Impara l\'inglese ascoltando, parlando e leggendo.</string>
+
+    <string name="open_file">Apri PDF o testo</string>
+    <string name="paste_text">Incolla testo</string>
+    <string name="paste_title">Incolla un testo in inglese</string>
+    <string name="paste_hint">Incolla un paragrafo, un articolo, una lezione…</string>
+    <string name="doc_title_hint">Titolo (facoltativo)</string>
+    <string name="pasted_title">Testo incollato</string>
+    <string name="recent">Documenti recenti</string>
+    <string name="no_docs">Ancora nessun documento. Apri un PDF o incolla un testo in inglese per iniziare.</string>
+    <string name="vocabulary">Vocabolario</string>
+    <string name="settings">Impostazioni</string>
+    <string name="about">Informazioni</string>
+    <string name="tutor">Tutor (server)</string>
+    <string name="pages_n">Pagine: %1$d</string>
+    <string name="opening">Apertura del documento…</string>
+    <string name="ocr_progress">Lettura della pagina scansionata %1$d di %2$d…</string>
+    <string name="open_failed">Impossibile aprire il file: %1$s</string>
+    <string name="no_text">In questo file non è stato trovato testo leggibile.</string>
+    <string name="scanned_no_ocr">Questo PDF è una scansione. Attiva l\'OCR nelle Impostazioni per leggerlo.</string>
+    <string name="ocr_skipped">Alcune pagine non contenevano testo e sono state saltate.</string>
+    <string name="arabic_doc">Questo documento è in arabo. Viene mostrato ma non letto ad alta voce.</string>
+    <string name="preparing_dict">Preparazione del dizionario offline (solo al primo avvio)…</string>
+    <string name="delete_doc">Elimina documento</string>
+
+    <string name="welcome">Benvenuto in LumenRead</string>
+    <string name="welcome_body">Scegli la lingua dell\'interfaccia. Potrai cambiarla, insieme a tutto il resto, nelle Impostazioni.</string>
+    <string name="welcome_translation">Mostra una traduzione sotto ogni paragrafo</string>
+    <string name="get_started">Inizia</string>
+
+    <string name="page_n">Pagina %1$d</string>
+    <string name="go_to_page">Vai alla pagina</string>
+    <string name="page_number_hint">Numero di pagina (1–%1$d)</string>
+    <string name="go">Vai</string>
+    <string name="cancel">Annulla</string>
+    <string name="ok">OK</string>
+    <string name="play">Riproduci</string>
+    <string name="pause">Pausa</string>
+    <string name="prev_sentence">Frase precedente</string>
+    <string name="next_sentence">Frase successiva</string>
+    <string name="prev_paragraph">Paragrafo precedente</string>
+    <string name="next_paragraph">Paragrafo successivo</string>
+    <string name="practice">Pronuncia questa frase</string>
+    <string name="speed">Velocità</string>
+    <string name="speed_value">%1$s×</string>
+    <string name="translation">Traduzione</string>
+    <string name="translating">…</string>
+    <string name="downloading_model">Download del modello di traduzione (una sola volta, circa 30 MB)…</string>
+    <string name="translation_failed">Traduzione non disponibile: %1$s</string>
+    <string name="tts_missing">Nessuna voce inglese installata. Installane una nelle impostazioni di sintesi vocale del telefono.</string>
+    <string name="tts_settings">Apri impostazioni</string>
+    <string name="resumed">Ripreso da dove eri rimasto</string>
+
+    <string name="meaning">Significato</string>
+    <string name="definition">Definizione</string>
+    <string name="listen">Ascolta</string>
+    <string name="read_from_here">Leggi da qui</string>
+    <string name="remove_word">Rimuovi dal vocabolario</string>
+    <string name="removed">Rimossa</string>
+    <string name="saved_auto">Salvata nel tuo vocabolario</string>
+    <string name="not_found">(non trovata)</string>
+
+    <string name="listening">In ascolto… leggi la frase ad alta voce.</string>
+    <string name="you_said">Hai detto</string>
+    <string name="score_n">Punteggio: %1$d%%</string>
+    <string name="all_words_ok">Tutte le parole sono state riconosciute. Ottimo!</string>
+    <string name="missed_words">Parole da esercitare: %1$s</string>
+    <string name="no_speech">Non si è sentito nulla. Riprova più vicino al microfono.</string>
+    <string name="no_recognizer">Il riconoscimento vocale non è disponibile su questo telefono.</string>
+    <string name="mic_denied">Permesso del microfono negato.</string>
+    <string name="try_again">Riprova</string>
+
+    <string name="vocab_empty">Ancora nessuna parola. Tocca una parola durante la lettura per salvarla qui.</string>
+    <string name="vocab_count">Parole: %1$d · Imparate: %2$d</string>
+    <string name="flashcards">Flashcard</string>
+    <string name="share_csv">Condividi come CSV</string>
+    <string name="show_gloss_back">Mostra il significato sul retro della carta</string>
+    <string name="tap_to_flip">Tocca la carta per girarla</string>
+    <string name="again">Di nuovo</string>
+    <string name="hard">Difficile</string>
+    <string name="good">Bene</string>
+    <string name="easy">Facile</string>
+    <string name="card_n">%1$d / %2$d</string>
+    <string name="no_cards">Nessuna parola da ripassare.</string>
+    <string name="delete">Elimina</string>
+    <string name="mark_known">Segna come imparata</string>
+    <string name="learned">Imparata</string>
+
+    <string name="s_language">Lingua dell\'interfaccia</string>
+    <string name="lang_system">Sistema</string>
+    <string name="s_theme">Tema</string>
+    <string name="theme_system">Come il sistema</string>
+    <string name="theme_light">Chiaro</string>
+    <string name="theme_dark">Scuro</string>
+    <string name="theme_black">Nero (OLED)</string>
+    <string name="s_translation_section">Aiuto alla traduzione</string>
+    <string name="s_show_translation">Mostra la traduzione sotto ogni paragrafo</string>
+    <string name="s_target">Traduci in</string>
+    <string name="target_ar">Arabo</string>
+    <string name="target_zh">Cinese</string>
+    <string name="target_it">Italiano</string>
+    <string name="s_word_langs">Significati quando tocchi una parola</string>
+    <string name="s_word_langs_note">Scegline una o più. Ogni lingua scarica il proprio modello di traduzione una sola volta (circa 30 MB).</string>
+    <string name="s_reading_section">Lettura ad alta voce</string>
+    <string name="s_voice">Voce</string>
+    <string name="voice_default">Predefinita del telefono</string>
+    <string name="s_speed">Velocità di lettura</string>
+    <string name="s_pdf_section">PDF e pagine scansionate</string>
+    <string name="s_ocr">Leggi le pagine scansionate con l\'OCR</string>
+    <string name="s_ocr_note">Funziona con il testo in inglese. Le scansioni in arabo non vengono riconosciute sul telefono.</string>
+    <string name="s_data_section">Dati e privacy</string>
+    <string name="s_clear_translations">Svuota la cache delle traduzioni</string>
+    <string name="s_clear_documents">Svuota la cache dei documenti</string>
+    <string name="cleared">Svuotata</string>
+    <string name="confirm_clear">Eliminare questi dati temporanei? Verranno ricreati quando servono. Il tuo vocabolario resta salvato.</string>
+    <string name="s_server">Server del tutor (facoltativo)</string>
+    <string name="s_server_note">Il tutor di conversazione e la correzione dei testi richiedono un modello di IA più grande di quanto un telefono possa eseguire. Se usi il server LumenRead sul tuo computer, inserisci qui il suo indirizzo.</string>
+    <string name="server_hint">http://192.168.1.20:8848</string>
+    <string name="not_set">Non impostato</string>
+    <string name="privacy">Tutto funziona su questo telefono. Dopo il download, una sola volta, del modello di traduzione non viene inviato nulla a nessuno: nessun account, nessuna telemetria e nessun audio o testo lascia il tuo dispositivo.</string>
+
+    <string name="version_n">Versione %1$s</string>
+    <string name="about_privacy_title">Privacy</string>
+    <string name="about_upstream_title">Basato su LLMersion</string>
+    <string name="about_upstream">LumenRead è un fork di LLMersion-1, l\'implementazione di riferimento open source dello schema LLMersion (Guo et al., arXiv:2609.29672): un framework di IA locale per imparare le lingue a casa a basso costo. Sorgente: github.com/QM378/LLMersion</string>
+    <string name="about_license_title">Licenze</string>
+    <string name="about_license">Codice: licenza MIT, inclusa la nota di copyright originale di LLMersion.\n\nTraduzione e OCR sul dispositivo: Google ML Kit (Termini delle API di Google; i modelli si scaricano al primo utilizzo).\nTesto dei PDF: PdfBox-Android (Apache-2.0).\nPronunce: CMU Pronouncing Dictionary (licenza di tipo BSD).\nDefinizioni: Princeton WordNet 3.0 (licenza WordNet).\nVoce di lettura e riconoscimento vocale: i servizi di sistema del tuo telefono.</string>
+
+    <string name="tutor_needs_server">Imposta prima l\'indirizzo del server del tutor nelle Impostazioni.</string>
+    <string name="tutor_unreachable">Impossibile raggiungere il server del tutor. Verifica che sia avviato e sulla stessa rete.</string>
+</resources>

@@ -270,7 +270,10 @@ class ReaderActivity : BaseActivity() {
     }
 
     // ------------------------------------------------------------ translation
+    private var translationsFor = Prefs.target
+
     private fun translationFor(pi: Int, pos: Int): String? {
+        if (translationsFor != Prefs.target) { translations.clear(); translationsFor = Prefs.target }
         translations[pi]?.let { return it }
         if (pi in inFlight) return null
         inFlight += pi
@@ -297,12 +300,26 @@ class ReaderActivity : BaseActivity() {
         sheet.setContentView(v)
         v.findViewById<TextView>(R.id.word).text = word
         val ipa = v.findViewById<TextView>(R.id.ipa)
-        val gloss = v.findViewById<TextView>(R.id.gloss)
         val def = v.findViewById<TextView>(R.id.def)
-        val target = Prefs.target
-        gloss.textDirection = if (target == "ar") View.TEXT_DIRECTION_RTL else View.TEXT_DIRECTION_LTR
-        gloss.textAlignment = View.TEXT_ALIGNMENT_VIEW_START
-        gloss.text = "…"
+        // one row per meaning language (Settings → "Meanings when you tap a word"), e.g. Arabic + Italian
+        val langs = Prefs.wordLangs
+        val box = v.findViewById<android.widget.LinearLayout>(R.id.glosses)
+        val glossViews = langs.associateWith { lang ->
+            box.addView(TextView(this).apply {
+                text = Langs.name(this@ReaderActivity, lang)
+                textSize = 12f
+                setTextColor(ContextCompat.getColor(context, R.color.text3))
+                setPadding(0, (10 * resources.displayMetrics.density).toInt(), 0, 0)
+            })
+            TextView(this).apply {
+                textSize = 20f
+                setTextColor(ContextCompat.getColor(context, R.color.text))
+                textDirection = Langs.textDirection(lang)
+                textAlignment = View.TEXT_ALIGNMENT_VIEW_START
+                text = "…"
+                box.addView(this)
+            }
+        }
         speaker?.speak(word, "word", flush = true)
         v.findViewById<View>(R.id.listen).setOnClickListener { speaker?.speak(word, "word", flush = true) }
         v.findViewById<View>(R.id.readHere).setOnClickListener {
@@ -326,9 +343,13 @@ class ReaderActivity : BaseActivity() {
                 ipa.text = if (e.ipa.isNotEmpty()) "/${e.ipa}/" else ""
                 def.text = e.definition.replace(" | ", "\n")
             }
-            val g = try { Tr.translate(base, target) } catch (ex: Exception) { "" }
-            gloss.text = g.ifEmpty { getString(R.string.not_found) }
-            withContext(Dispatchers.IO) { Db.addWord(base, g, target, e?.ipa ?: "", sentence) }
+            val found = mutableMapOf<String, String>()
+            for (lang in langs) {
+                val g = try { Tr.translate(base, lang) } catch (ex: Exception) { "" }
+                found[lang] = g
+                glossViews[lang]?.text = g.ifEmpty { getString(R.string.not_found) }
+            }
+            withContext(Dispatchers.IO) { Db.addWord(base, found, e?.ipa ?: "", sentence) }
         }
     }
 
@@ -501,9 +522,8 @@ class ReaderActivity : BaseActivity() {
             val showTr = Prefs.showTranslation && p.speakable && doc.lang != "ar"
             h.tr.visibility = if (showTr) View.VISIBLE else View.GONE
             if (showTr) {
-                val ar = Prefs.target == "ar"
-                h.tr.textDirection = if (ar) View.TEXT_DIRECTION_RTL else View.TEXT_DIRECTION_LTR
-                h.tr.layoutDirection = if (ar) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
+                h.tr.textDirection = Langs.textDirection(Prefs.target)
+                h.tr.layoutDirection = Langs.layoutDirection(Prefs.target)
                 h.tr.textAlignment = View.TEXT_ALIGNMENT_VIEW_START
                 h.tr.text = translationFor(pi, position) ?: getString(R.string.translating)
             }

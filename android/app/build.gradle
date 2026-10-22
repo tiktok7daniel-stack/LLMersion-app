@@ -11,8 +11,8 @@ android {
         applicationId 'app.lumenread'
         minSdk 24
         targetSdk 34
-        versionCode 3
-        versionName '1.1.1'
+        versionCode 4
+        versionName '1.2.0'
         // phones only: x86 builds are for emulators and double the size of the APK
         ndk { abiFilters 'arm64-v8a', 'armeabi-v7a' }
     }

@@ -165,8 +165,9 @@ class MainActivity : BaseActivity() {
         box.addView(TextView(this).apply { setText(R.string.welcome_body); setPadding(0, 0, 0, 24) })
         val tr = MaterialSwitch(this).apply { setText(R.string.welcome_translation); isChecked = Prefs.showTranslation }
         box.addView(tr)
-        val langs = arrayOf(getString(R.string.lang_system), getString(R.string.lang_en), getString(R.string.lang_ar))
-        val codes = arrayOf("system", "en", "ar")
+        val langs = arrayOf(getString(R.string.lang_system), getString(R.string.lang_en),
+            getString(R.string.lang_ar), getString(R.string.lang_it))
+        val codes = arrayOf("system", "en", "ar", "it")
         var chosen = codes.indexOf(Prefs.uiLang).coerceAtLeast(0)
         val dlg: AlertDialog = MaterialAlertDialogBuilder(this)
             .setTitle(R.string.welcome)

@@ -41,7 +41,8 @@ class SettingsActivity : BaseActivity() {
     private fun render() {
         box.removeAllViews()
         section(R.string.s_language)
-        choice(R.string.s_language, listOf("system" to R.string.lang_system, "en" to R.string.lang_en, "ar" to R.string.lang_ar),
+        choice(R.string.s_language, listOf("system" to R.string.lang_system, "en" to R.string.lang_en,
+            "ar" to R.string.lang_ar, "it" to R.string.lang_it),
             Prefs.uiLang) { Prefs.uiLang = it; Prefs.applyLanguage() }
         choice(R.string.s_theme, listOf("system" to R.string.theme_system, "light" to R.string.theme_light,
             "dark" to R.string.theme_dark, "black" to R.string.theme_black), Prefs.theme) {
@@ -50,9 +51,24 @@ class SettingsActivity : BaseActivity() {
 
         section(R.string.s_translation_section)
         switch(R.string.s_show_translation, Prefs.showTranslation) { Prefs.showTranslation = it }
-        choice(R.string.s_target, listOf("ar" to R.string.target_ar, "zh" to R.string.target_zh), Prefs.target) {
+        choice(R.string.s_target, listOf("ar" to R.string.target_ar, "it" to R.string.target_it,
+            "zh" to R.string.target_zh), Prefs.target) {
             Prefs.target = it
         }
+        val chosen = Prefs.wordLangs
+        row(getString(R.string.s_word_langs), chosen.joinToString(" + ") { Langs.name(this, it) }) {
+            val names = Langs.ALL.map { Langs.name(this, it) }.toTypedArray()
+            val checked = Langs.ALL.map { it in chosen }.toBooleanArray()
+            MaterialAlertDialogBuilder(this).setTitle(R.string.s_word_langs)
+                .setMultiChoiceItems(names, checked) { _, w, on -> checked[w] = on }
+                .setPositiveButton(R.string.ok) { _, _ ->
+                    val picked = Langs.ALL.filterIndexed { k, _ -> checked[k] }
+                    Prefs.wordLangs = picked.ifEmpty { listOf(Prefs.target) }
+                    render()
+                }
+                .setNegativeButton(R.string.cancel, null).show()
+        }
+        note(R.string.s_word_langs_note)
 
         section(R.string.s_reading_section)
         val voices = speaker?.englishVoices().orEmpty()

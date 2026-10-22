@@ -15,11 +15,9 @@
             android:layout_width="48dp" android:layout_height="48dp"
             android:src="@drawable/ic_volume" android:contentDescription="@string/listen" />
     </LinearLayout>
-    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:text="@string/meaning" android:textColor="@color/text3" android:textSize="12sp"
-        android:layout_marginTop="12dp" />
-    <TextView android:id="@+id/gloss" android:layout_width="match_parent"
-        android:layout_height="wrap_content" android:textSize="20sp" android:textColor="@color/text" />
+    <!-- one label + meaning per language chosen in Settings (Arabic and Italian by default) -->
+    <LinearLayout android:id="@+id/glosses" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:orientation="vertical" />
     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
         android:text="@string/definition" android:textColor="@color/text3" android:textSize="12sp"
         android:layout_marginTop="12dp" />

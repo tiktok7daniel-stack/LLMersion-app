@@ -18,20 +18,33 @@ def names(path: Path, translatable_only: bool = False) -> set[str]:
     return out
 
 
-def test_android_string_parity():
+import pytest
+
+
+@pytest.mark.parametrize("lang", ["ar", "it"])
+def test_android_string_parity(lang):
     en = names(RES / "values" / "strings.xml", translatable_only=True)
-    ar = names(RES / "values-ar" / "strings.xml")
-    assert not en - ar, f"missing from values-ar: {sorted(en - ar)}"
-    assert not ar - en, f"only in values-ar: {sorted(ar - en)}"
+    other = names(RES / f"values-{lang}" / "strings.xml")
+    assert not en - other, f"missing from values-{lang}: {sorted(en - other)}"
+    assert not other - en, f"only in values-{lang}: {sorted(other - en)}"
 
 
-def test_android_placeholders_match():
+@pytest.mark.parametrize("lang", ["ar", "it"])
+def test_android_placeholders_match(lang):
     def ph(path):
         return {n: sorted(re.findall(r"%\d\$[sd]", v)) for n, v in
                 re.findall(r'<string name="(\w+)"[^>]*>(.*?)</string>', path.read_text(encoding="utf-8"), re.S)}
-    en, ar = ph(RES / "values" / "strings.xml"), ph(RES / "values-ar" / "strings.xml")
-    for k in ar:
-        assert en[k] == ar[k], f"{k}: {en[k]} vs {ar[k]}"
+    en, other = ph(RES / "values" / "strings.xml"), ph(RES / f"values-{lang}" / "strings.xml")
+    for k in other:
+        assert en[k] == other[k], f"{k}: {en[k]} vs {other[k]}"
+
+
+def test_android_italian_apostrophes_are_escaped():
+    """An unescaped ' in an Android string resource breaks the build."""
+    for lang in ("", "-ar", "-it"):
+        for n, v in re.findall(r'<string name="(\w+)"[^>]*>(.*?)</string>',
+                               (RES / f"values{lang}" / "strings.xml").read_text(encoding="utf-8"), re.S):
+            assert not re.search(r"(?<!\\)'", v), f"values{lang}/{n} has an unescaped apostrophe"
 
 
 def test_android_code_uses_only_existing_strings():

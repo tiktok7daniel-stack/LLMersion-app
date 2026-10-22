@@ -101,6 +101,9 @@
     <string name="s_target">الترجمة إلى</string>
     <string name="target_ar">العربية</string>
     <string name="target_zh">الصينية</string>
+    <string name="target_it">الإيطالية</string>
+    <string name="s_word_langs">المعاني عند الضغط على كلمة</string>
+    <string name="s_word_langs_note">اختر لغة أو أكثر. كل لغة تنزّل نموذج الترجمة الخاص بها مرة واحدة (نحو 30 ميغابايت).</string>
     <string name="s_reading_section">القراءة بصوتٍ عالٍ</string>
     <string name="s_voice">الصوت</string>
     <string name="voice_default">الصوت الافتراضي للهاتف</string>

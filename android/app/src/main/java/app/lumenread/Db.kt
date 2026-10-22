@@ -18,9 +18,15 @@ data class Doc(val hash: String, val title: String, val pages: Int, val paras: L
 data class Word(
     val word: String, val ar: String, val zh: String, val ipa: String, val context: String,
     val added: Long, val hits: Int, val known: Boolean, val box: Int, val due: Long,
+    val it: String = "",
 ) {
-    fun gloss(target: String) = if (target == "zh") zh else ar
+    fun gloss(lang: String) = when (lang) { "zh" -> zh; "it" -> it; else -> ar }
+    fun withGloss(lang: String, g: String) = when (lang) {
+        "zh" -> copy(zh = g); "it" -> copy(it = g); else -> copy(ar = g)
+    }
 }
+
+private fun glossColumn(lang: String) = when (lang) { "zh" -> "zh"; "it" -> "it"; else -> "ar" }
 
 fun sha1(vararg parts: String): String {
     val md = MessageDigest.getInstance("SHA-1")
@@ -34,14 +40,17 @@ object Db {
     private val db: SQLiteDatabase get() = helper.writableDatabase
 
     fun init(c: Context) {
-        helper = object : SQLiteOpenHelper(c, "lumen.db", null, 1) {
+        helper = object : SQLiteOpenHelper(c, "lumen.db", null, 2) {
             override fun onCreate(d: SQLiteDatabase) {
                 d.execSQL("CREATE TABLE doc (hash TEXT PRIMARY KEY, title TEXT, pages INTEGER, json TEXT, added INTEGER)")
                 d.execSQL("CREATE TABLE progress (hash TEXT PRIMARY KEY, unit INTEGER)")
                 d.execSQL("CREATE TABLE trans (k TEXT PRIMARY KEY, v TEXT)")
-                d.execSQL("CREATE TABLE vocab (word TEXT PRIMARY KEY, ar TEXT, zh TEXT, ipa TEXT, context TEXT, added INTEGER, hits INTEGER, known INTEGER, box INTEGER, due INTEGER)")
+                d.execSQL("CREATE TABLE vocab (word TEXT PRIMARY KEY, ar TEXT, zh TEXT, ipa TEXT, context TEXT, added INTEGER, hits INTEGER, known INTEGER, box INTEGER, due INTEGER, it TEXT)")
             }
-            override fun onUpgrade(d: SQLiteDatabase, o: Int, n: Int) {}
+            override fun onUpgrade(d: SQLiteDatabase, o: Int, n: Int) {
+                // v2: Italian glosses; saved words and their Arabic/Chinese glosses are kept
+                if (o < 2) d.execSQL("ALTER TABLE vocab ADD COLUMN it TEXT")
+            }
         }
     }
 
@@ -111,26 +120,28 @@ object Db {
     fun clearTrans() { db.delete("trans", null, null) }
 
     // ------------------------------------------------------------ vocabulary
-    fun addWord(word: String, gloss: String, target: String, ipa: String, context: String) {
+    /** Save a tapped word with its glosses ({"ar": …, "it": …}); a repeat bumps the count. */
+    fun addWord(word: String, glosses: Map<String, String>, ipa: String, context: String) {
         val w = word.trim().lowercase()
         val existing = db.rawQuery("SELECT hits FROM vocab WHERE word=?", arrayOf(w)).use { c ->
             if (c.moveToFirst()) c.getInt(0) else -1
         }
         if (existing >= 0) {
             db.execSQL("UPDATE vocab SET hits=hits+1 WHERE word=?", arrayOf(w))
-            if (gloss.isNotEmpty()) setGloss(w, target, gloss)
+            glosses.forEach { (lang, g) -> if (g.isNotEmpty()) setGloss(w, lang, g) }
             return
         }
         db.insert("vocab", null, ContentValues().apply {
-            put("word", w); put("ar", if (target == "ar") gloss else "")
-            put("zh", if (target == "zh") gloss else ""); put("ipa", ipa); put("context", context)
+            put("word", w)
+            Langs.ALL.forEach { put(glossColumn(it), glosses[it].orEmpty()) }
+            put("ipa", ipa); put("context", context)
             put("added", System.currentTimeMillis()); put("hits", 1); put("known", 0)
             put("box", 0); put("due", 0L)
         })
     }
 
-    fun setGloss(word: String, target: String, gloss: String) {
-        val col = if (target == "zh") "zh" else "ar"
+    fun setGloss(word: String, lang: String, gloss: String) {
+        val col = glossColumn(lang)
         db.execSQL("UPDATE vocab SET $col=? WHERE word=? AND ($col IS NULL OR $col='')", arrayOf(gloss, word))
     }
 
@@ -149,11 +160,11 @@ object Db {
     }
 
     fun words(): List<Word> =
-        db.rawQuery("SELECT word, ar, zh, ipa, context, added, hits, known, box, due FROM vocab ORDER BY added DESC", null).use { c ->
+        db.rawQuery("SELECT word, ar, zh, ipa, context, added, hits, known, box, due, it FROM vocab ORDER BY added DESC", null).use { c ->
             buildList {
                 while (c.moveToNext()) add(Word(c.getString(0), c.getString(1) ?: "", c.getString(2) ?: "",
                     c.getString(3) ?: "", c.getString(4) ?: "", c.getLong(5), c.getInt(6),
-                    c.getInt(7) == 1, c.getInt(8), c.getLong(9)))
+                    c.getInt(7) == 1, c.getInt(8), c.getLong(9), c.getString(10) ?: ""))
             }
         }
 }

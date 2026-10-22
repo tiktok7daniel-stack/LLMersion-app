@@ -12,7 +12,7 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
 /**
- * English -> Arabic (or Chinese) translation, on the device, with Google ML Kit.
+ * English -> Arabic, Italian or Chinese translation, on the device, with Google ML Kit.
  * The language model downloads once (~30 MB); after that it works offline.
  * Every result is cached by target + text, so a paragraph is translated once.
  */
@@ -25,7 +25,7 @@ object Tr {
         Translation.getClient(
             TranslatorOptions.Builder()
                 .setSourceLanguage(TranslateLanguage.ENGLISH)
-                .setTargetLanguage(if (target == "zh") TranslateLanguage.CHINESE else TranslateLanguage.ARABIC)
+                .setTargetLanguage(Langs.mlkit(target))
                 .build()
         )
     }

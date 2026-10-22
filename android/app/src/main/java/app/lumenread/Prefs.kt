@@ -19,7 +19,7 @@ object Prefs {
     private fun bool(k: String, d: Boolean) = sp.getBoolean(k, d)
     private fun put(k: String, v: Boolean) = sp.edit().putBoolean(k, v).apply()
 
-    /** system | en | ar */
+    /** system | en | ar | it */
     var uiLang: String
         get() = str("ui_lang", "system")
         set(v) = put("ui_lang", v)
@@ -33,7 +33,7 @@ object Prefs {
         get() = bool("show_tr", true)
         set(v) = put("show_tr", v)
 
-    /** ar | zh */
+    /** ar | it | zh — the language of the translation under each paragraph */
     var target: String
         get() = str("target", "ar")
         set(v) = put("target", v)
@@ -42,6 +42,13 @@ object Prefs {
     var speed: Float
         get() = sp.getFloat("speed", 0.8f)
         set(v) = sp.edit().putFloat("speed", v.coerceIn(0.5f, 1.5f)).apply()
+
+    /** languages shown together when a word is tapped (default: Arabic and Italian) */
+    var wordLangs: List<String>
+        get() = str("word_langs", "ar,it").split(',').filter { it in Langs.ALL }
+            .ifEmpty { listOf(target) }
+            .sortedBy { Langs.ALL.indexOf(it) }
+        set(v) = put("word_langs", v.joinToString(","))
 
     var voice: String
         get() = str("voice", "")
