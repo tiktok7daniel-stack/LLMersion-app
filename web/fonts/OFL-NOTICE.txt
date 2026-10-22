@@ -1,0 +1,11 @@
+Bundled fonts (SIL Open Font License 1.1, https://openfontlicense.org)
+
+Inter                 Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter)
+Cairo                 Copyright 2009 The Cairo Project Authors (https://github.com/Gue3bara/Cairo)
+Noto Naskh Arabic     Copyright 2022 The Noto Project Authors (https://github.com/notofonts/arabic)
+Source Serif 4        Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'
+IBM Plex Mono         Copyright 2017 IBM Corp.
+
+The woff2 subsets here come from the Fontsource packages (@fontsource-variable/*,
+@fontsource/ibm-plex-mono), which redistribute the upstream fonts unmodified apart
+from subsetting. The fonts are bundled so the app never contacts a font CDN.

@@ -1,0 +1,6 @@
+You help a Chinese-speaking learner of English. An English writing tutor gave the feedback below on their passage.
+
+TUTOR FEEDBACK:
+{feedback}
+
+Write a short hint IN SIMPLIFIED CHINESE that explains only the 2-3 most important errors from the Notes section, one short line each. Keep English words and corrected examples in Latin script. No markdown, no preface.

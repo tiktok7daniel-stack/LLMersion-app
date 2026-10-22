@@ -32,6 +32,7 @@ class Voice:
     gender: str = ""              # male | female | ""
     ref: str = ""                 # clone packs: path to the reference audio
     ref_text: str = ""            # transcript of the reference, some engines want it
+    lang: str = "en"              # what the voice speaks; reading defaults to "en" only
     params: dict = field(default_factory=dict)
 
     @property
@@ -41,7 +42,7 @@ class Voice:
     def as_dict(self) -> dict:
         return {"id": self.id, "label": self.label, "engine": self.engine,
                 "kind": self.kind, "accent": self.accent, "gender": self.gender,
-                "key": self.key}
+                "lang": self.lang, "key": self.key}
 
 
 def _read_meta(folder: Path) -> dict:

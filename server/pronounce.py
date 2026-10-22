@@ -138,9 +138,11 @@ def compare(user_wav: bytes, ref_wav: bytes) -> dict:
     target = phonemes(ref_wav)
     heard = phonemes(user_wav)
     if not heard:
-        return {"ok": False, "error": "没听到声音，靠近麦克风再试一次"}
+        return {"ok": False, "error_key": "err.no_audio",
+                "error": "No sound heard. Move closer to the microphone and try again."}
     if not target:
-        return {"ok": False, "error": "参考音频异常"}
+        return {"ok": False, "error_key": "err.bad_reference",
+                "error": "The reference audio could not be read."}
 
     dist, ops = align(target, heard)
     score = max(0, round(100 * (1 - dist / max(1, len(target)))))

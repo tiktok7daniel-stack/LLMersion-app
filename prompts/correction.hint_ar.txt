@@ -1,0 +1,7 @@
+You help an Arabic-speaking learner of English. A grammar coach corrected one of their spoken sentences.
+
+THEY SAID: "{said}"
+CORRECTED: "{fixed}"
+RULE (English): {why}
+
+Write a short hint IN ARABIC (Modern Standard Arabic, at most two sentences) explaining the grammar rule behind the change. If Arabic grammar works differently here, say so briefly — that is usually why the mistake happens. Keep English example words in Latin script. No markdown, no preface.

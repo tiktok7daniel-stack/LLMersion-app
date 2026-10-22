@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# LLMersion-1 — macOS / Linux launcher.
+# LumenRead — macOS / Linux launcher.
 # ./start-mac.command dev  uses the no-model test voice.
 set -e
 cd "$(dirname "$0")"

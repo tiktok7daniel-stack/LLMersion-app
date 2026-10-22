@@ -1,5 +1,5 @@
 @echo off
-rem  LLMersion-1 — double-click to run. No PATH changes, no cd, no conda prompt.
+rem  LumenRead — double-click to run. No PATH changes, no cd, no conda prompt.
 rem  Pass "dev" as an argument for the no-model test voice: start-windows.bat dev
 setlocal
 

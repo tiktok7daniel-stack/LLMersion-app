@@ -1,4 +1,4 @@
-/* LLMersion-1 · 对话浮动窗口
+/* LumenRead · conversation window
  *
  * One file, no dependencies, no build step. It builds its own root inside a
  * shadow tree, so it can be dropped into the reader's page later without a
@@ -19,6 +19,10 @@
 (function () {
   "use strict";
 
+  /* Direction: the window's own chrome follows the UI language (dir on .win);
+     everything the tutor and the learner *say* is English and is marked
+     dir="ltr" lang="en" wherever it is rendered. Arabic (or Chinese) appears only
+     in opt-in hint boxes, with its own lang/dir. CSS uses logical properties. */
   const CSS = `
 :host { all: initial; }
 *, *::before, *::after { box-sizing: border-box; }
@@ -30,13 +34,14 @@
 [hidden] { display: none !important; }
 
 .win {
-  --ink:#16202b; --graphite:#5b6b7c; --faint:#8c9aa8;
-  --surface:#eaeef2; --card:#fdfdfc; --rule:#d3dae1;
-  --marker:#ffd84d; --marker-soft:#ffe98f; --indigo:#2f3a8c; --live:#b4402d;
-  --sans:"Instrument Sans",-apple-system,"Segoe UI",Roboto,sans-serif;
+  --ink:#0F172A; --graphite:#475569; --faint:#64748B;
+  --surface:#F8FAFC; --card:#FFFFFF; --rule:#E2E8F0;
+  --marker:#F59E0B; --marker-soft:#FDE7B0; --indigo:#1D4ED8; --live:#B91C1C;
+  --sans:"Inter","Cairo",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   --serif:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --naskh:"Noto Naskh Arabic","Cairo","Traditional Arabic",serif;
   --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
-  --han:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  --han:"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;
 
   position: fixed; z-index: 2147483000;
   display: flex; flex-direction: column;
@@ -48,9 +53,9 @@
   overflow: hidden;
 }
 .win.dark {
-  --ink:#dbe3ec; --graphite:#97a6b5; --faint:#6d7d8d;
-  --surface:#0f151c; --card:#161e27; --rule:#29343f;
-  --marker:#c99a15; --marker-soft:#7a5f11; --indigo:#93a4ff; --live:#e0674c;
+  --ink:#E2E8F0; --graphite:#A9B6C9; --faint:#8797AE;
+  --surface:#0B1220; --card:#111B2E; --rule:#243248;
+  --marker:#F59E0B; --marker-soft:#5B4210; --indigo:#8FB0FF; --live:#FCA5A5;
   box-shadow: 0 1px 2px rgba(0,0,0,.5), 0 18px 48px rgba(0,0,0,.45);
 }
 .win.flat { position: relative; width: 100%; height: 100%; border: 0; border-radius: 0; box-shadow: none; }
@@ -67,8 +72,9 @@ button:focus-visible, select:focus-visible, input:focus-visible {
   outline: 2px solid var(--indigo); outline-offset: 1px;
 }
 button.icon { padding: 3px 6px; font-size: 13px; }
-button.primary { background: var(--indigo); color: #fff; border-color: var(--indigo); font-weight: 500; }
-button.primary:hover { filter: brightness(1.08); background: var(--indigo); color: #fff; }
+button.primary { background: #1D4ED8; color: #fff; border-color: #1D4ED8; font-weight: 500; }
+button.primary:hover { filter: brightness(1.08); background: #1D4ED8; color: #fff; }
+.win.dark button.primary { background: #2F5FE0; border-color: #2F5FE0; }
 button[disabled] { opacity: .45; cursor: default; }
 .spacer { flex: 1; }
 
@@ -83,14 +89,14 @@ button[disabled] { opacity: .45; cursor: default; }
 .grip { width: 10px; height: 14px; flex: none; opacity: .45;
   background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 4px 4px; }
 .title { font-weight: 600; font-size: 13px; white-space: nowrap; flex: none; }
-.now { font-size: 12px; color: var(--graphite); font-family: var(--han);
+.now { font-size: 12px; color: var(--graphite); font-family: var(--sans);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); flex: none; }
 .dot.on { background: #3f9160; }
 .dot.off { background: var(--live); }
 
 /* -------------------------------------------------------------- setup */
-.setup { padding: 26px 22px; font-family: var(--han); overflow-y: auto; }
+.setup { padding: 26px 22px; font-family: var(--sans); overflow-y: auto; }
 .setup h3 { margin: 0 0 4px; font-size: 16px; font-weight: 600; }
 .setup p { margin: 0 0 16px; font-size: 12.5px; color: var(--graphite); line-height: 1.7; }
 .modes { display: flex; gap: 7px; margin-bottom: 12px; flex-wrap: wrap; }
@@ -113,8 +119,8 @@ button[disabled] { opacity: .45; cursor: default; }
 .main { flex: 1; min-height: 0; display: grid; grid-template-columns: 1.05fr 1fr; }
 .win.narrow .main { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
 .pane { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
-.pane + .pane { border-left: 1px solid var(--rule); }
-.win.narrow .pane + .pane { border-left: 0; border-top: 1px solid var(--rule); }
+.pane + .pane { border-inline-start: 1px solid var(--rule); }
+.win.narrow .pane + .pane { border-inline-start: 0; border-top: 1px solid var(--rule); }
 
 .head {
   flex: none; display: flex; align-items: center; gap: 7px;
@@ -160,7 +166,7 @@ button[disabled] { opacity: .45; cursor: default; }
 .chip.act:hover { background: var(--surface); }
 .live {
   font-size: 14px; line-height: 1.6; color: var(--faint); font-style: italic;
-  border-left: 2px solid var(--live); padding-left: 8px; min-height: 22px;
+  border-inline-start: 2px solid var(--live); padding-inline-start: 8px; min-height: 22px;
 }
 .live.on { color: var(--graphite); }
 
@@ -169,7 +175,7 @@ button[disabled] { opacity: .45; cursor: default; }
   flex: none; height: 44%; min-height: 96px; border-top: 1px solid var(--rule);
   display: flex; flex-direction: column;
 }
-.fixbody { flex: 1; min-height: 0; overflow-y: auto; padding: 11px 13px; font-family: var(--han); }
+.fixbody { flex: 1; min-height: 0; overflow-y: auto; padding: 11px 13px; font-family: var(--sans); }
 .fixnone { color: var(--faint); font-size: 12px; line-height: 1.7; }
 .card { margin-bottom: 13px; }
 .card .orig {
@@ -183,7 +189,7 @@ button[disabled] { opacity: .45; cursor: default; }
 }
 .card .why {
   font-size: 12px; color: var(--graphite); margin-top: 5px;
-  border-left: 2px solid var(--marker); padding-left: 8px; line-height: 1.65;
+  border-inline-start: 2px solid var(--marker); padding-inline-start: 8px; line-height: 1.65;
 }
 .card .phon { margin-top: 5px; font-family: var(--mono); font-size: 11.5px; letter-spacing: .04em; }
 .phon .sub { color: var(--live); }
@@ -198,7 +204,7 @@ button[disabled] { opacity: .45; cursor: default; }
   overflow-x: auto; scrollbar-width: none;
 }
 .strip::-webkit-scrollbar { display: none; }
-.strip .lab { font-size: 10.5px; color: var(--faint); font-family: var(--han); white-space: nowrap; flex: none; }
+.strip .lab { font-size: 10.5px; color: var(--faint); font-family: var(--sans); white-space: nowrap; flex: none; }
 .word {
   position: relative; z-index: 0; flex: none; font-size: 12px; padding: 2px 8px;
   border-radius: 999px; border: 1px solid var(--rule); color: var(--faint);
@@ -208,6 +214,7 @@ button[disabled] { opacity: .45; cursor: default; }
   content: ""; position: absolute; inset: 0; z-index: -1;
   transform-origin: left center; transform: scaleX(0); background: var(--marker-soft);
 }
+.win[dir="rtl"] .word::before { transform-origin: right center; }
 .word.heard { color: var(--graphite); border-color: var(--marker); }
 .word.said { color: var(--ink); border-color: var(--marker); font-weight: 500; }
 .word.said::before { animation: sweep .45s cubic-bezier(.4,0,.2,1) forwards; }
@@ -234,23 +241,23 @@ button[disabled] { opacity: .45; cursor: default; }
 .mic[disabled] { opacity: .4; cursor: default; }
 .say {
   flex: 1; min-width: 0; background: var(--card); border: 1px solid var(--rule);
-  border-radius: 8px; padding: 7px 9px; font-size: 13px; font-family: var(--han);
+  border-radius: 8px; padding: 7px 9px; font-size: 13px; font-family: var(--serif);
 }
-.hint { font-size: 10.5px; color: var(--faint); font-family: var(--han); white-space: nowrap; }
+.hint { font-size: 10.5px; color: var(--faint); font-family: var(--sans); }
 .hint b { color: var(--graphite); font-weight: 500; }
 
 /* -------------------------------------------------------------- overlays */
 .sheet {
-  position: absolute; right: 8px; top: 38px; z-index: 5; width: 250px;
+  position: absolute; inset-inline-end: 8px; inset-block-start: 38px; z-index: 5; width: 250px;
   background: var(--card); border: 1px solid var(--rule); border-radius: 9px;
   box-shadow: 0 10px 30px rgba(22,32,43,.18); padding: 10px; font-size: 12px;
-  font-family: var(--han);
+  font-family: var(--sans);
 }
 .sheet h4 { margin: 0 0 7px; font-size: 11px; letter-spacing: .07em; text-transform: uppercase;
   color: var(--faint); font-family: var(--mono); font-weight: 500; }
 .sheet .r { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
 .sheet .r .k { color: var(--graphite); flex: 1; }
-.sheet .r .v { font-family: var(--mono); font-size: 11px; text-align: right;
+.sheet .r .v { font-family: var(--mono); font-size: 11px; text-align: end;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 132px; }
 .sheet label { display: flex; align-items: center; gap: 6px; cursor: pointer;
   color: var(--graphite); margin-bottom: 5px; }
@@ -259,18 +266,27 @@ button[disabled] { opacity: .45; cursor: default; }
 .sheet .acts button { border-color: var(--rule); font-size: 11.5px; }
 
 .note {
-  position: absolute; left: 50%; transform: translateX(-50%); bottom: 64px;
-  background: var(--ink); color: var(--card); font-size: 12px; font-family: var(--han);
+  position: absolute; inset-inline: 0; margin-inline: auto; width: fit-content; bottom: 64px;
+  background: var(--ink); color: var(--card); font-size: 12px; font-family: var(--sans);
   padding: 5px 11px; border-radius: 999px; z-index: 6; pointer-events: none;
   opacity: 0; transition: opacity .18s ease; max-width: 80%; text-align: center;
 }
 .note.on { opacity: .93; }
 
-.grab { position: absolute; right: 0; bottom: 0; width: 15px; height: 15px;
-  cursor: nwse-resize; z-index: 4; }
-.grab::after { content: ""; position: absolute; right: 3px; bottom: 3px; width: 7px; height: 7px;
-  border-right: 1.5px solid var(--faint); border-bottom: 1.5px solid var(--faint); }
+.grab { position: absolute; inset-block-end: 0; width: 15px; height: 15px; cursor: nwse-resize; z-index: 4;
+  background: linear-gradient(135deg, transparent 55%, var(--faint) 55% 66%, transparent 66% 77%, var(--faint) 77% 88%, transparent 88%); }
 .win.flat .grab { display: none; }
+
+/* opt-in hint (Arabic / Chinese): its own language and direction, set in JS */
+.hintbtn { margin-block-start: 6px; font-size: 11.5px; border-color: var(--rule); }
+.hintbox {
+  margin-block-start: 6px; padding: 7px 10px; border-radius: 8px; background: var(--surface);
+  border: 1px solid var(--rule); border-inline-start: 3px solid var(--marker);
+  font-size: 13px; line-height: 1.8; text-align: start;
+}
+.hintbox:lang(ar) { font-family: var(--naskh); font-size: 15px; line-height: 2; }
+.hintbox.err { color: var(--live); border-inline-start-color: var(--live); font-family: var(--sans); font-size: 12px; }
+.cap, .said .txt, .live, .card .orig, .card .new, .past .line { text-align: start; }
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 4px; }
@@ -329,9 +345,54 @@ button[disabled] { opacity: .45; cursor: default; }
     return frag;
   }
 
+  /** Tiny stand-in for js/i18n.js when the panel runs on its own page
+      (talk.main serves /i18n/*.json too). Same t(key, params) contract. */
+  function miniI18n(api) {
+    const st = { lang: "en", dict: {}, fb: {} };
+    const q = new URLSearchParams(location.search).get("lang");
+    const nav = (navigator.languages || [navigator.language || "en"]).map((l) => String(l).slice(0, 2));
+    st.lang = q === "ar" || q === "en" ? q : (nav.find((l) => l === "ar" || l === "en") || "en");
+    const get = (k, d, lang) => {
+      if (d && typeof d.n === "number") {
+        let cat = "other";
+        try { cat = new Intl.PluralRules(lang).select(d.n); } catch (e) { /* other */ }
+        if (st.dict[`${k}_${cat}`] != null) return st.dict[`${k}_${cat}`];
+        if (st.dict[`${k}_other`] != null) return st.dict[`${k}_other`];
+      }
+      return st.dict[k];
+    };
+    const api_ = {
+      get lang() { return st.lang; },
+      get dir() { return st.lang === "ar" ? "rtl" : "ltr"; },
+      t(k, p) {
+        let v = get(k, p, st.lang);
+        if (v == null) v = st.fb[k];
+        if (v == null) return k;
+        return p ? v.replace(/\{(\w+)\}/g, (m, n) => (n in p ? p[n] : m)) : v;
+      },
+      ready: null,
+    };
+    const load = async (lang) => (await fetch(`${api}/i18n/${lang}.json`)).json();
+    api_.ready = Promise.all([load(st.lang), load("en")]).then(([d, f]) => { st.dict = d; st.fb = f; })
+      .catch(() => { /* keys show instead of text; still usable */ });
+    return api_;
+  }
+
   window.mountTalkPanel = function mountTalkPanel(opts) {
     opts = opts || {};
     const api = (opts.apiBase || "").replace(/\/$/, "");
+    const I = opts.i18n || miniI18n(api);
+    const T = (k, p) => I.t(k, p);
+    // labels that are plain text or an attribute: re-applied on a language change
+    const labels = [];
+    const L = (node, key, prop, params) => { labels.push([node, key, prop || "textContent", params]); return node; };
+    const relabel = () => labels.forEach(([n, k, prop, p]) => {
+      if (prop === "textContent") n.textContent = T(k, p); else n[prop] = T(k, p);
+    });
+    const hintLang = () => (opts.getTargetLang ? opts.getTargetLang() : (I.lang === "ar" ? "ar" : "zh"));
+    const faceOf = (lang) => (lang === "zh" ? { lang: "zh-Hans", dir: "ltr" } : { lang: "ar", dir: "rtl" });
+    /** English content: always left-to-right, whatever the UI language. */
+    const en = (node) => { node.lang = "en"; node.dir = "ltr"; return node; };
     const flat = !!opts.flat;
     const host = opts.host || document.body;
 
@@ -349,41 +410,44 @@ button[disabled] { opacity: .45; cursor: default; }
       win.style.left = Math.max(12, Math.round((window.innerWidth - 780) / 2)) + "px";
       win.style.top = Math.max(12, window.innerHeight - 640) + "px";
     }
-    if (document.body.getAttribute("data-theme") === "dark"
-      || window.matchMedia("(prefers-color-scheme: dark)").matches) win.classList.add("dark");
+    const isDark = () => ["dark", "black"].includes(document.documentElement.getAttribute("data-theme"))
+      || (!document.documentElement.getAttribute("data-theme")
+        && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    win.classList.toggle("dark", isDark());
+    const applyDir = () => { win.dir = I.dir; win.lang = I.lang; win.classList.toggle("dark", isDark()); };
+    applyDir();
 
     // ------------------------------------------------------------ chrome
     const bar = el("div", "bar");
-    const title = el("span", "title", "对话");
-    const now = el("span", "now", "");
-    const dSt = el("span", "dot"); dSt.title = "语音识别";
-    const dLl = el("span", "dot"); dLl.title = "对话模型";
-    const dTt = el("span", "dot"); dTt.title = "朗读与评分";
-    const again = el("button", null, "换话题");
-    const gear = el("button", "icon", "⚙"); gear.title = "设置";
-    const mini = el("button", "icon", "–"); mini.title = "收起";
-    const shut = el("button", "icon", "✕"); shut.title = "关闭";
+    const title = el("span", "title", "");
+    const now = el("span", "now", ""); now.dir = "auto";
+    const dSt = el("span", "dot"); L(dSt, "talk.dot_stt", "title");
+    const dLl = el("span", "dot"); L(dLl, "talk.dot_llm", "title");
+    const dTt = el("span", "dot"); L(dTt, "talk.dot_voice", "title");
+    const again = L(el("button"), "talk.new_topic");
+    const gear = el("button", "icon", "⚙"); L(gear, "talk.settings", "title"); L(gear, "talk.settings", "ariaLabel");
+    const mini = el("button", "icon", "–"); L(mini, "talk.minimize", "title"); L(mini, "talk.minimize", "ariaLabel");
+    const shut = el("button", "icon", "✕"); L(shut, "common.close", "title"); L(shut, "common.close", "ariaLabel");
     bar.append(el("span", "grip"), title, dSt, dLl, dTt, now, el("span", "spacer"), again, gear, mini);
     if (!flat) bar.appendChild(shut);
 
     // ------------------------------------------------------------ setup
     const setup = el("div", "setup");
     const modes = el("div", "modes");
-    const mFree = el("button", "mode on", "自由说");
-    const mTopic = el("button", "mode", "指定话题");
-    const mDoc = el("button", "mode", "聊这篇文档");
+    const mFree = L(el("button", "mode on"), "talk.mode_free");
+    const mTopic = L(el("button", "mode"), "talk.mode_topic");
+    const mDoc = L(el("button", "mode"), "talk.mode_doc");
     modes.append(mFree, mTopic, mDoc);
     const fTopic = el("div", "field"); fTopic.hidden = true;
     const topicIn = el("input");
-    topicIn.placeholder = "想聊什么？比如 why my experiment keeps failing";
+    en(topicIn); L(topicIn, "talk.topic_placeholder", "placeholder");
     fTopic.append(topicIn);
     const fDoc = el("div", "field"); fDoc.hidden = true;
     const picker = el("select");
     const docWhy = el("div", "why", "");
     fDoc.append(picker, docWhy);
-    const goBtn = el("button", "primary go", "开始");
-    setup.append(el("h3", null, "开口之前，选个起点"),
-      el("p", null, "不管选哪个，老师都会刻意用你生词本里的词，你说的每句都会顺带评发音、顺带纠错。"),
+    const goBtn = L(el("button", "primary go"), "talk.start");
+    setup.append(L(el("h3"), "talk.setup_title"), L(el("p"), "talk.setup_body"),
       modes, fTopic, fDoc, goBtn);
 
     // ------------------------------------------------------------ main
@@ -391,22 +455,23 @@ button[disabled] { opacity: .45; cursor: default; }
 
     const paneT = el("div", "pane");
     const headT = el("div", "head");
-    const replay = el("button", null, "▶ 再听");
-    headT.append(el("span", null, "老师"), el("span", "spacer"), replay);
+    const replay = el("button");
+    headT.append(L(el("span"), "talk.tutor"), el("span", "spacer"), replay);
     const stage = el("div", "stage");
-    const cap = el("div", "cap");
-    const past = el("div", "past");
-    stage.append(cap, past);
+    const cap = en(el("div", "cap"));
+    const past = en(el("div", "past"));
+    const hintHost = el("div", "hinthost");
+    stage.append(cap, hintHost, past);
     paneT.append(headT, stage);
 
     const paneM = el("div", "pane");
     const headM = el("div", "head");
-    headM.append(el("span", null, "你说的"));
+    headM.append(L(el("span"), "talk.you_said"));
     const mineWrap = el("div", "mine");
-    const live = el("div", "live");
+    const live = en(el("div", "live"));
     const fix = el("div", "fix");
     const headF = el("div", "head");
-    headF.append(el("span", null, "纠正"));
+    headF.append(L(el("span"), "talk.corrections"));
     const fixBody = el("div", "fixbody");
     fix.append(headF, fixBody);
     paneM.append(headM, mineWrap, fix);
@@ -417,13 +482,12 @@ button[disabled] { opacity: .45; cursor: default; }
     const strip = el("div", "strip");
     const compose = el("div", "compose");
     const mic = el("button", "mic"); mic.innerHTML = '<span class="core"></span>';
-    mic.title = "说话（或按住空格）";
-    const say = el("input", "say"); say.placeholder = "说不出口就打字，回车发送";
+    const say = en(el("input", "say")); L(say, "talk.type_placeholder", "placeholder");
     const hint = el("span", "hint");
     compose.append(mic, say, hint);
 
     const note = el("div", "note");
-    const grab = el("div", "grab");
+    const grab = el("div", "grab"); grab.style.right = "0";
     win.append(bar, setup, main, strip, compose, note, grab);
 
     const audio = new Audio();
@@ -455,7 +519,7 @@ button[disabled] { opacity: .45; cursor: default; }
     const url = (p) => api + p;
 
     // Nothing here should be able to leave the window stuck on a spinner. Every
-    // request carries its own deadline, and 换话题 cancels whatever is running.
+    // request carries its own deadline, and "new topic" cancels whatever is running.
     let flight = null;
     async function ask(path, init, seconds, label) {
       const ac = new AbortController();
@@ -464,10 +528,15 @@ button[disabled] { opacity: .45; cursor: default; }
       try {
         const r = await fetch(url(path), Object.assign({ signal: ac.signal }, init));
         const d = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(d.detail || `${label}失败（${r.status}）`);
+        if (!r.ok) {
+          const det = d.detail;
+          const msg = det && typeof det === "object"
+            ? (T(det.key) !== det.key ? T(det.key) : det.msg) : det;
+          throw new Error(msg || T("talk.request_failed", { what: T(label), status: r.status }));
+        }
         return d;
       } catch (e) {
-        if (e.name === "AbortError") throw new Error(`${label}超过 ${seconds} 秒没回应`);
+        if (e.name === "AbortError") throw new Error(T("talk.timeout", { what: T(label), n: seconds }));
         throw e;
       } finally {
         clearTimeout(t);
@@ -539,7 +608,7 @@ button[disabled] { opacity: .45; cursor: default; }
       S.busy = false;
       S.session = null; main.hidden = true; setup.hidden = false;
       now.textContent = ""; hint.textContent = "";
-      goBtn.textContent = "开始";
+      goBtn.textContent = T("talk.start");
     };
 
     // ------------------------------------------------------------ settings
@@ -550,32 +619,32 @@ button[disabled] { opacity: .45; cursor: default; }
       const r = (k, v) => {
         const d = el("div", "r"); d.append(el("span", "k", k), el("span", "v", v)); return d;
       };
-      sheet.append(el("h4", null, "本机组件"));
-      sheet.append(r("语音识别", h.stt && h.stt.available
+      sheet.append(el("h4", null, T("talk.s_components")));
+      sheet.append(r(T("talk.s_stt"), h.stt && h.stt.available
         ? `${h.stt.backend} · ${h.stt.model}` : (h.stt ? h.stt.reason : "…")));
-      sheet.append(r("对话模型", h.llm && h.llm.available ? h.llm.model : "未运行"));
-      sheet.append(r("朗读", h.voice && h.voice.available
-        ? `${h.voice.engine} · ${h.voice.via === "reader" ? "共用阅读器" : "本进程"}` : "无"));
-      sheet.append(r("发音评分", h.voice && h.voice.gop ? "wav2vec2" : "不可用"));
+      sheet.append(r(T("talk.s_llm"), h.llm && h.llm.available ? h.llm.model : T("talk.s_not_running")));
+      sheet.append(r(T("talk.s_voice"), h.voice && h.voice.available
+        ? `${h.voice.engine} · ${h.voice.via === "reader" ? T("talk.s_shared") : T("talk.s_own")}` : T("talk.s_none")));
+      sheet.append(r(T("talk.s_scoring"), h.voice && h.voice.gop ? "wav2vec2" : T("talk.s_unavailable")));
       sheet.append(document.createElement("hr"));
       const box = (label, key) => {
         const l = el("label"); const c = el("input"); c.type = "checkbox"; c.checked = S[key];
         c.onchange = () => { S[key] = c.checked; };
         l.append(c, document.createTextNode(label)); return l;
       };
-      sheet.append(box("回复自动朗读", "autoplay"),
-        box("顺带发音评分", "score"),
-        box("顺带语法纠正", "coach"),
-        box("说话时实时出字", "interim"));
+      sheet.append(box(T("talk.s_autoplay"), "autoplay"),
+        box(T("talk.s_score"), "score"),
+        box(T("talk.s_coach"), "coach"),
+        box(T("talk.s_interim"), "interim"));
       sheet.append(document.createElement("hr"));
       const acts = el("div", "acts");
-      const un = el("button", null, "释放识别显存");
+      const un = el("button", null, T("talk.s_unload"));
       un.onclick = async () => {
         await fetch(url("/api/talk/stt/unload"), { method: "POST" });
-        toast("语音识别模型已卸载"); refreshHealth();
+        toast(T("talk.s_unloaded")); refreshHealth();
       };
-      const rs = el("button", null, "重新检测");
-      rs.onclick = () => { refreshHealth(); loadDocs(); toast("已重新检测"); };
+      const rs = el("button", null, T("talk.s_recheck"));
+      rs.onclick = () => { refreshHealth(); loadDocs(); toast(T("talk.s_rechecked")); };
       acts.append(un, rs);
       sheet.append(acts);
       win.appendChild(sheet);
@@ -603,14 +672,14 @@ button[disabled] { opacity: .45; cursor: default; }
 
     // ------------------------------------------------------------ tutor side
     let capTimer = null;
-    function showTutor(t, isNew) {
+    let showTutor = function (t, isNew) {
       // demote whatever was on stage
       if (isNew && cap.textContent.trim()) {
         const old = el("div", "line");
         old.appendChild(markWords(cap.dataset.text || cap.textContent, S.targets));
         if (cap.dataset.audio) {
           const a = cap.dataset.audio, rt = cap.dataset.rate;
-          old.title = "点一下再听";
+          old.title = T("talk.click_replay");
           old.onclick = () => { audio.src = url(a); audio.playbackRate = +rt || 1; audio.play(); };
         }
         past.prepend(old);
@@ -630,13 +699,13 @@ button[disabled] { opacity: .45; cursor: default; }
       });
       if (!S.capMarks) cap.classList.add("idle");
       stage.scrollTop = 0;
-    }
+    };
 
     function showThinking(on) {
       if (!on) return;
       cap.className = "cap idle";
       cap.textContent = "";
-      cap.appendChild(el("div", "thinking", "在想…"));
+      cap.appendChild(el("div", "thinking", T("talk.thinking")));
     }
 
     function followCaption() {
@@ -666,7 +735,7 @@ button[disabled] { opacity: .45; cursor: default; }
       cap.querySelectorAll(".s").forEach((s) => { s.classList.remove("on"); s.classList.add("done"); });
     });
     replay.onclick = () => {
-      if (!cap.dataset.audio) { toast("这一轮没有声音"); return; }
+      if (!cap.dataset.audio) { toast(T("talk.no_audio")); return; }
       audio.src = url(cap.dataset.audio);
       audio.playbackRate = +cap.dataset.rate || 1;
       audio.play();
@@ -676,15 +745,15 @@ button[disabled] { opacity: .45; cursor: default; }
     function playTurn(t) {
       if (t.voice_error && !voiceWarned) {
         voiceWarned = true;
-        toast("这一轮没有声音：" + t.voice_error, 6000);
+        toast(T("talk.no_audio_why", { msg: t.voice_error }), 6000);
       }
       if (!S.autoplay || !t.audio) return;
       audio.src = url(t.audio);
       audio.playbackRate = t.rate || 1;
       audio.play().catch((err) => {
         toast(err && err.name === "NotAllowedError"
-          ? "浏览器挡了自动播放 — 点一下「再听」，之后就会自己响"
-          : "放不出声音：" + (err && err.name || err), 6000);
+          ? T("talk.autoplay_blocked")
+          : T("talk.play_failed", { msg: (err && err.name) || String(err) }), 6000);
       });
     }
 
@@ -693,13 +762,13 @@ button[disabled] { opacity: .45; cursor: default; }
 
     function showSaid(t) {
       mineWrap.querySelectorAll(".said").forEach((n) => n.classList.add("old"));
-      const wrap = el("div", "said");
+      const wrap = en(el("div", "said"));
       const txt = el("div", "txt");
       txt.appendChild(markWords(t.text || "", S.targets));
       wrap.append(txt);
       const row = el("div", "row");
-      if (typeof t.score === "number") row.append(el("span", "chip " + scoreClass(t.score), "发音 " + t.score));
-      if ((t.used || []).length) row.append(el("span", "chip", "用上 " + t.used.length + " 个生词"));
+      if (typeof t.score === "number") row.append(el("span", "chip " + scoreClass(t.score), T("talk.chip_pron", { n: t.score })));
+      if ((t.used || []).length) row.append(el("span", "chip", T("talk.chip_used", { n: t.used.length })));
       if (row.childNodes.length) wrap.append(row);
       mineWrap.insertBefore(wrap, live);
       live.textContent = ""; live.classList.remove("on");
@@ -709,18 +778,19 @@ button[disabled] { opacity: .45; cursor: default; }
     function showFix(t) {
       const card = el("div", "card");
       if (t.fixed) {
-        card.append(el("div", "orig", t.text));
-        const nw = el("div", "new");
+        card.append(en(el("div", "orig", t.text)));
+        const nw = en(el("div", "new"));
         nw.appendChild(markStars(t.fixed));
         card.append(nw);
-        if (t.why) card.append(el("div", "why", t.why));
+        if (t.why) card.append(en(el("div", "why", t.why)));    // one English sentence naming the rule
+        card.append(hintControl("correction", () => ({ said: t.text, fixed: t.fixed.replace(/\*/g, ""), why: t.why || "" })));
       } else {
         card.classList.add("ok");
-        card.append(el("div", "new", "这句没问题。"));
+        card.append(el("div", "new", T("talk.fix_ok")));
       }
       if (t.problems && t.problems.length) {
-        const ph = el("div", "phon");
-        ph.append(el("span", null, "音（已忽略口音差异）："));
+        const ph = en(el("div", "phon"));
+        ph.append(Object.assign(el("span", null, T("talk.phon_note")), { lang: document.documentElement.lang, dir: I.dir }));
         t.problems.forEach((o) => {
           const s = el("span", o.op === "sub" ? "sub" : o.op === "miss" ? "miss" : "extra");
           s.textContent = o.op === "sub" ? `${o.target}→${o.heard} `
@@ -728,6 +798,8 @@ button[disabled] { opacity: .45; cursor: default; }
           ph.append(s);
         });
         card.append(ph);
+        card.append(hintControl("pronunciation", () => ({
+          word: t.text, ops: t.problems })));
       }
       const none = fixBody.querySelector(".fixnone");
       if (none) none.remove();
@@ -736,24 +808,23 @@ button[disabled] { opacity: .45; cursor: default; }
 
     function resetFix() {
       fixBody.textContent = "";
-      fixBody.append(el("div", "fixnone",
-        "你说完一句，这里会给出改过的版本和为什么这么改。说得对的时候它会直说没问题——不会为了有话说而挑毛病。"));
+      fixBody.append(el("div", "fixnone", T("talk.fix_none")));
     }
 
     // ------------------------------------------------------------ word strip
     function renderStrip() {
       strip.textContent = "";
       if (!S.targets.length) {
-        strip.append(el("span", "lab", "生词本还是空的 · 在阅读器里查几个词，它们会出现在这里"));
+        strip.append(el("span", "lab", T("talk.strip_empty")));
         return;
       }
-      strip.append(el("span", "lab", "你的词"));
+      strip.append(el("span", "lab", T("talk.strip_label")));
       S.targets.forEach((w) => {
-        const c = el("span", "word", w);
-        const ever = S.ever[w] ? `（以前说过 ${S.ever[w]} 次）` : "";
-        if (S.said[w]) { c.classList.add("said"); c.title = "这轮你说出口了" + ever; }
-        else if (S.heard[w]) { c.classList.add("heard"); c.title = "老师用过，还没轮到你" + ever; }
-        else c.title = "还没出现" + ever;
+        const c = en(el("span", "word", w));
+        const ever = S.ever[w] ? " " + T("talk.strip_ever", { n: S.ever[w] }) : "";
+        if (S.said[w]) { c.classList.add("said"); c.title = T("talk.strip_said") + ever; }
+        else if (S.heard[w]) { c.classList.add("heard"); c.title = T("talk.strip_heard") + ever; }
+        else c.title = T("talk.strip_not_yet") + ever;
         strip.append(c);
       });
     }
@@ -777,7 +848,7 @@ button[disabled] { opacity: .45; cursor: default; }
       if (h.score_default === false) S.score = false;
       if (h.coach_default === false) S.coach = false;
       if (h.interim_default === false) S.interim = false;
-      title.textContent = h.dev ? "对话 · dev" : "对话";
+      title.textContent = h.dev ? T("talk.title") + " · dev" : T("talk.title");
       refreshMic();
     }
 
@@ -786,15 +857,15 @@ button[disabled] { opacity: .45; cursor: default; }
       catch (e) { S.docs = []; }
       picker.textContent = "";
       if (!S.docs.length) {
-        picker.append(el("option", null, "还没有读过的文档"));
+        picker.append(el("option", null, T("talk.no_docs")));
         picker.disabled = true;
         mDoc.disabled = true;
-        docWhy.textContent = "在阅读器里打开过的文档才会出现在这里。";
+        docWhy.textContent = T("talk.no_docs_why");
         return;
       }
       picker.disabled = false; mDoc.disabled = false;
       S.docs.forEach((d) => {
-        const o = el("option", null, d.title || d.doc_id);
+        const o = el("option", null, d.title || d.doc_id); o.dir = "auto";
         o.value = d.doc_id;
         picker.append(o);
       });
@@ -803,7 +874,7 @@ button[disabled] { opacity: .45; cursor: default; }
     function syncWhy() {
       const d = S.docs.find((x) => x.doc_id === picker.value);
       docWhy.textContent = d
-        ? `从你读到的第 ${((d.progress && d.progress.para) || 0) + 1} 段开始，只聊那附近写着的东西。` : "";
+        ? T("talk.doc_why", { n: ((d.progress && d.progress.para) || 0) + 1 }) : "";
     }
     picker.onchange = syncWhy;
 
@@ -822,33 +893,33 @@ button[disabled] { opacity: .45; cursor: default; }
       if (S.mode === "doc") {
         payload.doc_id = (ctx && ctx.doc_id) || picker.value;
         if (ctx) payload.para = ctx.para;
-        if (!payload.doc_id) { toast("先选一份文档"); return; }
+        if (!payload.doc_id) { toast(T("talk.pick_doc")); return; }
       }
-      if (S.mode === "topic" && !payload.topic) { toast("写一句想聊什么"); topicIn.focus(); return; }
+      if (S.mode === "topic" && !payload.topic) { toast(T("talk.type_topic")); topicIn.focus(); return; }
 
-      goBtn.disabled = true; goBtn.textContent = "在想开场白…";
+      goBtn.disabled = true; goBtn.textContent = T("talk.starting");
       try {
         const d = await ask("/api/talk/session", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
-        }, 120, "开场");
+        }, 120, "talk.what_open");
         S.session = d.session; S.topic = d.topic;
         S.doc = d.context ? d.context.doc_id : null;
         S.para = d.context ? d.context.para : null;
         S.targets = d.targets || []; S.heard = {}; S.said = {};
         now.textContent = d.context
           ? `${d.context.title} · §${d.context.from + 1}–${d.context.to + 1}`
-          : (d.topic || "自由说");
+          : (d.topic || T("talk.mode_free"));
         setup.hidden = true; main.hidden = false;
         past.textContent = ""; mineWrap.textContent = ""; mineWrap.append(live);
         resetFix(); renderStrip();
         showTutor(d.turn, false); absorb("tutor", d.turn.used);
         playTurn(d.turn);
-        hint.innerHTML = "按住 <b>空格</b> 说话 · <b>Esc</b> 打断";
+        setHint("talk.hint_ready");
       } catch (e) {
         toast(String(e.message || e), 5000);
       }
-      goBtn.disabled = false; goBtn.textContent = "开始";
+      goBtn.disabled = false; goBtn.textContent = T("talk.start");
     }
     goBtn.onclick = () => { unlockAudio(); start(); };
 
@@ -867,12 +938,12 @@ button[disabled] { opacity: .45; cursor: default; }
       if (typed) fd.append("text", typed);
 
       try {
-        const d = await ask("/api/talk/turn", { method: "POST", body: fd }, 180, "这一轮");
+        const d = await ask("/api/talk/turn", { method: "POST", body: fd }, 180, "talk.what_turn");
         if (d.empty) {
           live.textContent = ""; live.classList.remove("on");
           showTutor({ text: cap.dataset.text, audio: cap.dataset.audio, rate: cap.dataset.rate,
             sents: S.capSents, marks: S.capMarks }, false);
-          toast(d.message || "没听清", 3500);
+          toast((d.message_key && T(d.message_key) !== d.message_key ? T(d.message_key) : d.message) || T("talk.heard_nothing"), 3500);
           return;
         }
         showSaid(d.learner); absorb("learner", d.learner.used);
@@ -880,7 +951,7 @@ button[disabled] { opacity: .45; cursor: default; }
         showTutor(d.turn, true); absorb("tutor", d.turn.used);
         playTurn(d.turn);
         S.targets = d.targets || S.targets;
-        hint.innerHTML = `${d.secs.toFixed(1)}s · 按住 <b>空格</b> · <b>Esc</b> 打断`;
+        setHint("talk.hint_after", { secs: d.secs.toFixed(1) });
       } catch (e) {
         cap.className = "cap idle";
         cap.textContent = "";
@@ -895,7 +966,7 @@ button[disabled] { opacity: .45; cursor: default; }
       const h = S.health || {};
       mic.disabled = !(h.stt && h.stt.available) || S.busy || !S.session;
       mic.title = mic.disabled && !(h.stt && h.stt.available)
-        ? "没有可用的语音识别 — 可以先打字" : "说话（或按住空格）";
+        ? T("talk.mic_no_stt") : T("talk.mic_title");
     }
 
     // ------------------------------------------------------------ microphone
@@ -926,15 +997,15 @@ button[disabled] { opacity: .45; cursor: default; }
 
     async function startRec() {
       if (REC.on || S.busy) return;
-      if (!S.session) { toast("先选个起点开始"); return; }
+      if (!S.session) { toast(T("talk.pick_start")); return; }
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        toast("麦克风需要 https 或 localhost — 先打字也行", 5000); return;
+        toast(T("err.mic_insecure"), 5000); return;
       }
       try {
         REC.stream = await navigator.mediaDevices.getUserMedia({
           audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
         });
-      } catch (e) { toast("拿不到麦克风权限", 4000); return; }
+      } catch (e) { toast(T("err.mic_denied"), 4000); return; }
       audio.pause();                       // talking over the tutor interrupts it
       if (opts.pauseHost) { try { opts.pauseHost(); } catch (e) { } }
       REC.ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -948,13 +1019,13 @@ button[disabled] { opacity: .45; cursor: default; }
       REC.on = true;
       mic.classList.add("live");
       live.textContent = "…"; live.classList.remove("on");
-      hint.innerHTML = "在听 · 松开发送";
+      setHint("talk.hint_listening");
       REC.tick = setInterval(pushInterim, 1600);
       // Whisper reads 30 s at a time; past that the tail would vanish silently
       REC.cap = setTimeout(() => {
         if (!REC.on) return;
         const b = stopRec();
-        toast("一次说 30 秒以内", 3000);
+        toast(T("talk.max_30"), 3000);
         if (b) send(b, "");
       }, 30000);
     }
@@ -964,7 +1035,7 @@ button[disabled] { opacity: .45; cursor: default; }
       REC.on = false;
       clearTimeout(REC.cap); clearInterval(REC.tick);
       mic.classList.remove("live");
-      hint.innerHTML = S.session ? "按住 <b>空格</b> 说话 · <b>Esc</b> 打断" : "";
+      if (S.session) setHint("talk.hint_ready"); else hint.textContent = "";
       try { REC.node.disconnect(); } catch (e) { }
       try { REC.stream.getTracks().forEach((t) => t.stop()); } catch (e) { }
       const snap = snapshot();
@@ -979,7 +1050,7 @@ button[disabled] { opacity: .45; cursor: default; }
     mic.onclick = () => {
       if (REC.on) {
         const b = stopRec();
-        if (!b) { toast("太短了，再说一次"); return; }
+        if (!b) { toast(T("talk.too_short")); return; }
         send(b, "");
       } else startRec();
     };
@@ -1007,8 +1078,8 @@ button[disabled] { opacity: .45; cursor: default; }
       if (hidden || !mine()) return;
       if (shadow.activeElement === say || shadow.activeElement === topicIn) return;
       if (e.code === "Escape") {
-        if (!audio.paused) { audio.pause(); toast("打断了"); }
-        else if (REC.on) { stopRec(true); toast("取消了这一句"); }
+        if (!audio.paused) { audio.pause(); toast(T("talk.interrupted")); }
+        else if (REC.on) { stopRec(true); toast(T("talk.cancelled")); }
         e.preventDefault(); e.stopPropagation();
         return;
       }
@@ -1024,7 +1095,7 @@ button[disabled] { opacity: .45; cursor: default; }
       held = false;
       e.preventDefault(); e.stopPropagation();
       const b = stopRec();
-      if (!b) { toast("太短了，按住久一点"); return; }
+      if (!b) { toast(T("talk.too_short_hold")); return; }
       send(b, "");
     }, true);
 
@@ -1046,16 +1117,95 @@ button[disabled] { opacity: .45; cursor: default; }
     }
 
     // ------------------------------------------------------------ go
-    resetFix();
-    renderStrip();
-    refreshHealth();
-    loadDocs();
-    loadWords();
-    if (opts.getContext && opts.getContext()) setMode("doc");
+    // ------------------------------------------------------------ hints
+    // A "Show Arabic hint" button under a card. Nothing is requested until it is
+    // pressed; the server caches the answer. Chinese when that is the target.
+    function hintControl(kind, payload) {
+      const wrap = el("div", "hintwrap");
+      const btn = el("button", "hintbtn");
+      const box = el("div", "hintbox"); box.hidden = true;
+      let open = false, loaded = "";
+      const label = () => { btn.textContent = open ? T("hint.hide") : T("hint.show", { lang: T(`hint.lang_${hintLang()}`) }); };
+      label();
+      btn.dataset.relabel = "1";
+      btn.relabel = label;
+      btn.onclick = async () => {
+        if (open) { open = false; box.hidden = true; label(); return; }
+        const lang = hintLang();
+        const f = faceOf(lang);
+        box.hidden = false; box.className = "hintbox"; box.lang = f.lang; box.dir = f.dir;
+        if (loaded !== lang) {
+          box.textContent = T("hint.loading");
+          try {
+            const d = await (await fetch(url("/api/talk/hint"), {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ kind, lang, ...payload() }),
+            })).json();
+            if (d.error_key || d.error) {
+              box.className = "hintbox err"; box.lang = I.lang; box.dir = I.dir;
+              box.textContent = (d.error_key && T(d.error_key) !== d.error_key) ? T(d.error_key) : d.error;
+            } else { box.textContent = d.hint; loaded = lang; }
+          } catch (e) {
+            box.className = "hintbox err"; box.lang = I.lang; box.dir = I.dir;
+            box.textContent = T("err.generic");
+          }
+        }
+        open = true; label();
+      };
+      wrap.append(btn, box);
+      if (opts.getSettings && opts.getSettings().arabic_hints) setTimeout(() => btn.click(), 0);
+      return wrap;
+    }
+
+    function setHint(key, params) {
+      // the hint strings carry <b>…</b> around key names; they are our own text
+      hint.innerHTML = T(key, params);
+      hint.dataset.key = key;
+      hint.dataset.params = JSON.stringify(params || {});
+    }
+
+    // ------------------------------------------------------------ language
+    function relabelAll() {
+      applyDir();
+      relabel();
+      replay.textContent = "▶ " + T("talk.replay");
+      mic.title = T("talk.mic_title");
+      if (hint.dataset.key) setHint(hint.dataset.key, JSON.parse(hint.dataset.params || "{}"));
+      renderStrip();
+      refreshHealth();
+      loadDocs();
+      win.querySelectorAll(".hintbtn").forEach((b) => b.relabel && b.relabel());
+      if (!S.session) goBtn.textContent = T("talk.start");
+      if (!fixBody.querySelector(".card")) resetFix();
+    }
+    if (opts.i18n) window.addEventListener("lumen:langchange", relabelAll);
+
+    // the tutor's line gets its own hint button, rebuilt for every new turn
+    const origShowTutor = showTutor;
+    showTutor = function (tt, isNew) {          // eslint-disable-line no-func-assign
+      origShowTutor(tt, isNew);
+      hintHost.textContent = "";
+      if (tt && tt.text) hintHost.append(hintControl("tutor", () => ({ text: tt.text })));
+    };
+
+    (async () => {
+      if (I.ready) await I.ready;
+      applyDir();
+      relabel();
+      replay.textContent = "▶ " + T("talk.replay");
+      mic.title = T("talk.mic_title");
+      resetFix();
+      renderStrip();
+      refreshHealth();
+      loadDocs();
+      loadWords();
+      if (opts.getContext && opts.getContext()) setMode("doc");
+    })();
     setInterval(refreshHealth, 20000);
 
     return {
       el: holder,
+      i18n: I,
       start,
       show, hide,
       toggle: () => (hidden ? show() : hide()),

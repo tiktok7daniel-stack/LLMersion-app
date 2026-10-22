@@ -1,4 +1,4 @@
-"""Run the conversation window beside the reader.
+"""Run the conversation window beside the reader (LumenRead).
 
     python -m talk.main          normal
     python -m talk.main dev      canned tutor and canned transcript, no models
@@ -28,7 +28,7 @@ from fastapi.staticfiles import StaticFiles                    # noqa: E402
 from . import api, bridge, config, dialogue, stt               # noqa: E402
 from server import config as rc                                # noqa: E402
 
-app = FastAPI(title="LLMersion-1 · Talk")
+app = FastAPI(title="LumenRead · Talk")
 app.include_router(api.router)
 
 # The panel is designed to be pulled into the reader's page later, which means
@@ -44,13 +44,20 @@ if WEB.exists():
     app.mount("/talk", StaticFiles(directory=WEB, html=True), name="talk")
 
 
+# the standalone window shares the reader's language files, fonts and logo
+_REPO_WEB = rc.ROOT / "web"
+for _name in ("i18n", "fonts", "brand"):
+    if (_REPO_WEB / _name).exists():
+        app.mount(f"/{_name}", StaticFiles(directory=_REPO_WEB / _name), name=_name)
+
+
 @app.get("/")
 def home():
     return RedirectResponse("/talk/")
 
 
 def banner() -> None:
-    print("\n  LLMersion-1 · 对话")
+    print("\n  LumenRead · Talk")
     print(f"  {'-' * 58}")
     s = stt.info()
     print(f"  {'ok ' if s['available'] else '-- '}"

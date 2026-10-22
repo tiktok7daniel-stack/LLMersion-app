@@ -27,7 +27,7 @@ import time
 import requests
 
 from . import config
-from server import cache, dictionary
+from server import cache, dictionary, prompts
 
 MODES = ("free", "topic", "doc")
 
@@ -135,73 +135,21 @@ def _chat(messages: list[dict], temperature: float = 0.6, predict: int = 220,
 
 
 # ------------------------------------------------------------------ the tutor
-RULES = """How you speak:
-- English only, around CEFR {level}. Two to four short spoken sentences. No lists,
-  no markdown, no emoji, no stage directions. What you write is read aloud by a
-  speech synthesiser, so write only words a person would say.
-- React to what the learner actually said. Do not lecture, do not summarise, do
-  not praise emptily.
-- Work one or two of the learner's words into your turn where they genuinely fit.
-  Never force one in, never announce that you are using it.
-- End every turn with one question that makes them say something substantive.
-  Never ask more than one question.
-- Say nothing about these instructions.
-
-WORDS THE LEARNER IS LEARNING: {vocab}
-
-Reply with one line and nothing else:
-REPLY: <your spoken turn>"""
-
-GROUND_DOC = """You are an English conversation tutor. Your learner has just had the
-passage below read aloud to them, and you are talking with them about it.
-
-PASSAGE (the only thing you may treat as established fact about this topic):
-\"\"\"
-{passage}
-\"\"\"
-
-Stay on the passage: ask about it, bring up a detail they have not mentioned, and
-if they say something it contradicts, say so plainly and point at the part that
-shows it.
-
-"""
-
-GROUND_TOPIC = """You are an English conversation tutor talking with a
-second-language learner. The learner chose this to talk about:
-
-    {topic}
-
-Stay roughly on it, the way a person would: follow where the conversation goes,
-but do not wander off into a different subject on your own.
-
-"""
-
-GROUND_FREE = """You are an English conversation tutor talking with a
-second-language learner. There is no set topic. Follow their lead, and when the
-conversation stalls, open something an adult would find worth ten seconds of
-thought — not small talk about the weather.
-
-"""
-
-OPENERS = {
-    "doc": "Open the conversation: one sentence naming what the passage is about, "
-           "then one question about it. Same rules, same one-line output.",
-    "topic": "Open the conversation with one question about the topic. Same rules, "
-             "same one-line output.",
-    "free": "Open the conversation. One short line, then one question worth "
-            "answering. Same rules, same one-line output.",
-}
+# The words the tutor is given live in prompts/ (tutor.*.en.txt) so they can be
+# read and tuned without touching code. English is always the tutor's voice; the
+# learner asks for an Arabic (or Chinese) hint per message with the hint button.
 
 
 def _system(mode: str, ctx: dict | None, topic: str, words: list[str]) -> str:
     if mode == "doc" and ctx:
-        head = GROUND_DOC.format(passage=ctx["text"][:6000])
+        head = prompts.load("tutor.ground_doc.en", passage=ctx["text"][:6000])
     elif mode == "topic":
-        head = GROUND_TOPIC.format(topic=topic[:300])
+        head = prompts.load("tutor.ground_topic.en", topic=topic[:300])
     else:
-        head = GROUND_FREE
-    return head + RULES.format(level=config.LEVEL,
-                               vocab=", ".join(words) or "(none saved yet)")
+        head = prompts.load("tutor.ground_free.en")
+    rules = prompts.load("tutor.en", level=config.LEVEL,
+                         vocab=", ".join(words) or "(none saved yet)")
+    return head + "\n\n" + rules
 
 
 def _one_line(raw: str) -> str:
@@ -241,8 +189,9 @@ def _dev_reply(history: list[dict], words: list[str]) -> str:
 def open_turn(mode: str, ctx: dict | None, topic: str, words: list[str]) -> str:
     if config.DEV:
         return _dev_open(mode, ctx, topic)
+    opener = prompts.load(f"tutor.open_{mode if mode in MODES else 'free'}.en")
     msgs = [{"role": "system", "content": _system(mode, ctx, topic, words)},
-            {"role": "user", "content": OPENERS.get(mode, OPENERS["free"])}]
+            {"role": "user", "content": opener}]
     return _one_line(_chat(msgs, temperature=0.75))
 
 
@@ -259,32 +208,8 @@ def reply(mode: str, ctx: dict | None, topic: str, words: list[str],
 
 
 # ------------------------------------------------------------------ the coach
-COACH_PROMPT = """A second-language learner said this out loud in English:
-
-"{said}"
-
-Decide whether a teacher would correct it.
-
-CORRECT only: grammar, verb tense and agreement, articles, prepositions, word
-order, and word choice that changes the meaning.
-
-NEVER "correct" any of the following. This was speech, and every one of these is
-what fluent speech looks like:
-- repeating a word or restarting a sentence ("Hello, hello", "I think — I mean")
-- fillers, punctuation, capitalisation
-- short answers and fragments, when a person would say them
-- anything you would only change to make it more formal, longer or more elegant
-
-If nothing in the CORRECT list is wrong, reply with exactly this and nothing else:
-OK
-
-Otherwise reply in exactly two lines and nothing else:
-FIXED: their sentence corrected, with every word you changed or added wrapped in *asterisks*
-WHY: 一句完整的中文，说明改动依据的语法规则，不要只给词义
-
-Example of the WHY line: 主语是第三人称单数，动词要加 -s。
-Not acceptable as a WHY line: a dictionary gloss, an English sentence, or a
-translation of the corrected sentence."""
+# prompts/correction.en.txt; the rule explanation is one English sentence and the
+# Arabic/Chinese version is the opt-in hint (prompts/correction.hint_*.txt).
 
 
 def coach(said: str) -> dict:
@@ -295,10 +220,10 @@ def coach(said: str) -> dict:
     if config.DEV:
         if "passage" in said.lower():
             return {"fixed": "I think the passage *is* mainly about how the method works.",
-                    "why": "主语后缺少系动词 is。"}
+                    "why": "A subject needs a verb: add the missing verb 'is'."}
         return {"fixed": "", "why": ""}
     try:
-        raw = _chat([{"role": "user", "content": COACH_PROMPT.format(said=said[:600])}],
+        raw = _chat([{"role": "user", "content": prompts.load("correction.en", said=said[:600])}],
                     temperature=0.1, predict=160, timeout=90)
     except Exception:
         return {"fixed": "", "why": ""}

@@ -1,14 +1,58 @@
-/* LLMersion-1 — client.
-   Audio model: one sentence = one cached clip. Clips are decoded up front and
-   scheduled on the Web Audio clock, so playback is gapless and the highlighter
-   position is derived from ctx.currentTime rather than from timer guesswork. */
+/* LumenRead — reader client.
+   Audio model: one paragraph = one cached clip with sentence marks. Clips are
+   decoded up front and scheduled on the Web Audio clock, so playback is gapless
+   and the highlighter position is derived from ctx.currentTime rather than from
+   timer guesswork.
+
+   Every visible string comes from t() / data-i18n (js/i18n.js); layout direction
+   comes from <html dir> (js/layout.js). Nothing here writes English or Arabic
+   into the page directly. The text of the *document* is different: it keeps its
+   own direction (p.dir) whatever the UI language is. */
 
 const $ = (id) => document.getElementById(id);
+const t = (key, params) => window.LumenI18n.t(key, params);
+
+/** A failed API call. `key` is an i18n key when the server sent one. */
+class ApiError extends Error {
+  constructor(message, key) { super(message); this.key = key || ""; }
+}
+
 const api = async (url, opt) => {
   const r = await fetch(url, opt);
-  if (!r.ok) throw new Error((await r.text()).slice(0, 200));
+  if (!r.ok) {
+    let key = "", msg = "";
+    try {
+      const d = await r.json();
+      const det = d && d.detail;
+      if (det && typeof det === "object") { key = det.key || ""; msg = det.msg || ""; }
+      else msg = det || "";
+    } catch (e) { /* not JSON */ }
+    throw new ApiError(msg || `HTTP ${r.status}`, key);
+  }
   return r.json();
 };
+
+/** The localised text for an error: its i18n key if it has one, else its message. */
+function errText(e) {
+  if (e && e.key) {
+    const s = t(e.key);
+    if (s !== e.key) return s;
+  }
+  return (e && e.message) || t("err.generic");
+}
+
+/** Text for a { error_key, error } body that came back with HTTP 200. */
+function bodyError(d) {
+  if (d && d.error_key) {
+    const s = t(d.error_key);
+    if (s !== d.error_key) return s;
+  }
+  return (d && d.error) || t("err.generic");
+}
+
+const post = (url, body) => api(url, {
+  method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}),
+});
 
 const S = {
   doc: null,
@@ -18,9 +62,12 @@ const S = {
   inflight: new Map(),
   engine: "",
   voice: "",
-  speed: 1,
+  speed: 0.8,         // learners start slow; the server setting overrides this
   cfg: null,
-  mt: { backend: "", model: "" },
+  settings: { ui_lang: "system", theme: "system", show_translation: true,
+    translation_target: "ar", tts_speed: 0.8, tts_voice: "", ocr_enabled: true,
+    ocr_arabic: false, arabic_hints: false, mt_choice: {}, text_scale: 100 },
+  mt: { backend: "", model: "" },    // for the current translation target
   compare: new Set(),
 };
 
@@ -35,8 +82,13 @@ const P = {
   nextTime: 0,
 };
 
+const targetLang = () => (S.settings.translation_target === "zh" ? "zh" : "ar");
+const uiDir = () => document.documentElement.getAttribute("dir") || "ltr";
+const BACK = () => window.LumenFlash.BACK_FACE[targetLang()];
+
 /* ---------------------------------------------------------------- utils */
 let statusTimer;
+/** Show an already-localised message. Use sayKey() for a key. */
 function say(msg, ms = 2200) {
   const el = $("status");
   el.textContent = msg;
@@ -44,6 +96,7 @@ function say(msg, ms = 2200) {
   clearTimeout(statusTimer);
   if (ms) statusTimer = setTimeout(() => el.classList.remove("on"), ms);
 }
+const sayKey = (key, params, ms) => say(t(key, params), ms);
 
 function ctx() {
   if (!P.ctx) {
@@ -53,6 +106,12 @@ function ctx() {
   }
   return P.ctx;
 }
+
+/** Local, dependency-free sentinel so a localStorage failure never breaks the app. */
+const mem = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode */ } },
+};
 
 /* ---------------------------------------------------------------- audio */
 async function fetchClip(text, engine, voice, speed) {
@@ -105,7 +164,7 @@ function ensureAudio(bi) {
     })
     .catch((e) => {
       S.inflight.delete(bi);
-      say("朗读失败：" + e.message, 4000);
+      say(t("err.tts_failed", { msg: errText(e) }), 4000);
       return null;
     });
   S.inflight.set(bi, p);
@@ -196,8 +255,15 @@ function resume() {
 
 function setPlaying(on) {
   P.playing = on;
-  $("play").textContent = on ? "❚❚" : "▶";
+  setPlayIcon(on);
   if (!on) stopAll();
+}
+
+const ICON_PLAY = "M8 5v14l11-7z";
+const ICON_PAUSE = "M7 5h4v14H7zM13 5h4v14h-4z";
+function setPlayIcon(on) {
+  $("playIcon").firstElementChild.setAttribute("d", on ? ICON_PAUSE : ICON_PLAY);
+  $("play").setAttribute("aria-pressed", String(on));
 }
 
 function pause() {
@@ -241,6 +307,7 @@ function duck(on) {
   P.gain.gain.setTargetAtTime(on ? 0.14 : 1.0, ctx().currentTime, 0.06);
 }
 
+
 /* ---------------------------------------------------------------- render */
 function unitEl(i) { return document.querySelector(`.sent[data-i="${i}"]`); }
 
@@ -253,24 +320,58 @@ function scrollToUnit(i) {
   }
 }
 
+/** Language of a paragraph's own text: what the font, the voice and the
+ *  direction should follow — not the UI language. */
+const paraLang = (p) => (p.kind === "ar" ? "ar" : p.kind === "cjk" ? "zh" : "en");
+
+function pageBreak(page) {
+  const el = document.createElement("div");
+  el.className = "pagebreak";
+  el.dataset.page = page;
+  const label = document.createElement("span");
+  label.setAttribute("data-i18n", "reader.page_n");
+  label.setAttribute("data-i18n-params", JSON.stringify({ n: page + 1 }));
+  el.appendChild(label);
+  window.LumenI18n.apply(el);
+  return el;
+}
+
+function simplifyButton(text, el) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "icon simplify";
+  btn.setAttribute("data-i18n-attr", "title:reader.simplify;aria-label:reader.simplify");
+  btn.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M4 6h16v2H4zM4 11h10v2H4zM4 16h16v2H4z"/></svg>';
+  btn.onclick = () => simplifyPara(el, text, btn);
+  window.LumenI18n.apply(btn);
+  return btn;
+}
+
 function render(doc) {
   S.doc = doc;
   S.units = [];
   S.blocks = [];
   S.audio.clear();
   S.inflight.clear();
+  painted = -1;
 
+  const arabicDoc = (doc.meta && doc.meta.lang) === "ar";
   const root = document.createElement("div");
   root.className = "doc";
+  let lastPage = -1;
 
   doc.paragraphs.forEach((p) => {
+    if (p.page !== lastPage) { lastPage = p.page; root.appendChild(pageBreak(p.page)); }
     const el = document.createElement("article");
     el.className = "para " + p.kind;
     el.dataset.pi = p.id;
+    el.dataset.page = p.page;
+    el.dir = p.dir || "ltr";            // the document's direction, not the UI's
 
     const en = document.createElement("p");
     en.className = "en";
-    if (p.kind === "other" || p.kind === "toc" || p.kind === "cjk") {
+    en.lang = paraLang(p);
+    if (p.kind === "other" || p.kind === "toc" || p.kind === "cjk" || p.kind === "ar") {
       en.textContent = p.text;
     } else {
       const sents = p.sents && p.sents.length
@@ -289,31 +390,30 @@ function render(doc) {
     }
     el.appendChild(en);
 
-    if (p.kind === "body") {
-      const simp = document.createElement("button");
-      simp.className = "icon simplify";
-      simp.title = "简化这段（本地 LLM 改写为更易读版本）";
-      simp.textContent = "简";
-      simp.onclick = () => simplifyPara(el, p.text, simp);
-      el.appendChild(simp);
+    if (p.kind === "body") el.appendChild(simplifyButton(p.text, el));
+    if ((p.kind === "body" || p.kind === "heading") && !arabicDoc) {
+      const tr = document.createElement("p");
+      tr.className = "tr pending";
+      tr.dataset.pi = p.id;
+      tr.textContent = "…";
+      applyTrFace(tr);
+      el.appendChild(tr);
     }
-    if (p.kind === "body" || p.kind === "heading") {
-      const zh = document.createElement("p");
-      zh.className = "zh pending";
-      zh.dataset.pi = p.id;
-      zh.textContent = "…";
-      el.appendChild(zh);
-    }
-
     root.appendChild(el);
   });
 
   const reader = $("reader");
   reader.innerHTML = "";
   reader.appendChild(root);
-  $("docTitle").textContent = doc.title;
+  const title = $("docTitle");
+  title.textContent = doc.title;
+  title.hidden = false;
+  document.title = `${doc.title} · LumenRead`;
   $("transport").hidden = false;
-  $("counter").textContent = `0 / ${S.units.length}`;
+  updateCounter();
+  const pj = $("pageJump");
+  pj.max = String(doc.pages || 1);
+  $("pageTotal").textContent = String(doc.pages || 1);
 
   observeParas();
 
@@ -323,8 +423,38 @@ function render(doc) {
   P.queueBi = S.units[P.idx] ? S.units[P.idx].bi : 0;
   P.queueSi = S.units[P.idx] ? S.units[P.idx].si : 0;
   P.extra = 0;
-  if (P.idx > 0) { scrollToUnit(P.idx); say("已回到上次读到的位置"); }
+  if (P.idx > 0) { scrollToUnit(P.idx); sayKey("reader.resumed"); }
   prefetch(P.queueBi, 2);
+}
+
+function updateCounter() {
+  $("counter").textContent = `${S.units.length ? P.idx + 1 : 0} / ${S.units.length}`;
+}
+
+/** Current page (1-based) of the sentence being read. */
+function currentPage() {
+  const u = S.units[P.idx];
+  const p = u && S.doc ? S.doc.paragraphs[u.pi] : null;
+  return p ? p.page + 1 : 1;
+}
+
+/** Jump to the first sentence on or after page `n` (1-based). Keeps playing if it was. */
+function jumpToPage(n) {
+  if (!S.doc || !S.units.length) return;
+  const last = S.doc.pages || 1;
+  n = Math.max(1, Math.min(last, Math.round(Number(n) || 1)));
+  let idx = S.units.findIndex((u) => S.doc.paragraphs[u.pi].page + 1 >= n);
+  if (idx < 0) idx = S.units.length - 1;
+  if (P.playing) startAt(idx);
+  else {
+    const u = S.units[idx];
+    P.idx = idx; P.queueBi = u.bi; P.queueSi = u.si; P.extra = 0;
+    scrollToUnit(idx);
+    paint(idx, -1);
+    scheduleTr(0);
+    saveProgress(true);
+  }
+  $("pageJump").value = String(n);
 }
 
 /* ---------------------------------------------------------------- translation
@@ -336,37 +466,48 @@ function render(doc) {
 
    A paragraph that scrolls away before its turn simply loses its place in the
    queue instead of holding one; scroll past forty paragraphs and none of them
-   are translated, which is the point. */
+   are translated, which is the point.
 
-const ZH = {
+   The translation is a learning aid and is independent of the UI language: an
+   Arabic translation appears under English paragraphs in the English UI too. */
+
+const TR = {
   state: new Map(),     // pi -> "busy" | "done"
   visible: new Set(),
   active: 0,
   timer: null,
   io: null,
+  warned: false,
+  epoch: 0,             // bumped when the target/model changes; stale replies are dropped
 };
 
-const ZH_AHEAD = 4;     // paragraphs to translate ahead of the voice
-const ZH_BATCH = 3;
-const ZH_CONCURRENT = 2;
+const TR_AHEAD = 4;     // paragraphs to translate ahead of the voice
+const TR_BATCH = 3;
+const TR_CONCURRENT = 2;
 
-function zhWanted(pi) {
-  const p = S.doc && S.doc.paragraphs[pi];
-  if (!p) return false;
-  if (p.kind !== "body" && p.kind !== "heading") return false;   // contents, formulas, CJK
-  return !ZH.state.has(pi);
+/** Language and direction of the translation text under a paragraph. */
+function applyTrFace(el) {
+  el.lang = BACK().lang;
+  el.dir = BACK().dir;
 }
 
-function zhTargets() {
+function trWanted(pi) {
+  const p = S.doc && S.doc.paragraphs[pi];
+  if (!p) return false;
+  if (p.kind !== "body" && p.kind !== "heading") return false;   // contents, formulas, Arabic/CJK
+  return !TR.state.has(pi);
+}
+
+function trTargets() {
   const here = S.units[P.idx] ? S.units[P.idx].pi : -1;
   const scored = new Map();
   if (here >= 0) {
-    for (let k = 0; k <= ZH_AHEAD; k++) {
-      if (zhWanted(here + k)) scored.set(here + k, k);
+    for (let k = 0; k <= TR_AHEAD; k++) {
+      if (trWanted(here + k)) scored.set(here + k, k);
     }
   }
-  ZH.visible.forEach((pi) => {
-    if (!zhWanted(pi)) return;
+  TR.visible.forEach((pi) => {
+    if (!trWanted(pi)) return;
     const d = here >= 0 ? Math.abs(pi - here) : pi;
     const score = 100 + d;                       // always after the reading head
     if (!scored.has(pi) || scored.get(pi) > score) scored.set(pi, score);
@@ -374,63 +515,105 @@ function zhTargets() {
   return [...scored.entries()].sort((a, b) => a[1] - b[1]).map((e) => e[0]);
 }
 
-function scheduleZh(delay = 60) {
-  clearTimeout(ZH.timer);
-  ZH.timer = setTimeout(runZh, delay);
+function scheduleTr(delay = 60) {
+  clearTimeout(TR.timer);
+  TR.timer = setTimeout(runTr, delay);
 }
 
-async function runZh() {
-  if (!S.doc || ZH.active >= ZH_CONCURRENT) return;
-  const batch = zhTargets().slice(0, ZH_BATCH);
+async function runTr() {
+  if (!S.doc || TR.active >= TR_CONCURRENT || !S.settings.show_translation) return;
+  if (!S.mt.model) {
+    if (!TR.warned) { TR.warned = true; sayKey("tr.no_backend", null, 7000); }
+    return;
+  }
+  const batch = trTargets().slice(0, TR_BATCH);
   if (!batch.length) return;
-  batch.forEach((pi) => ZH.state.set(pi, "busy"));
-  ZH.active++;
-  if (ZH.active < ZH_CONCURRENT) scheduleZh(20);   // keep the pipe full
+  const epoch = TR.epoch;
+  batch.forEach((pi) => TR.state.set(pi, "busy"));
+  TR.active++;
+  if (TR.active < TR_CONCURRENT) scheduleTr(20);   // keep the pipe full
 
   const texts = batch.map((pi) => S.doc.paragraphs[pi].text);
   try {
-    const res = await api("/api/translate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ texts, backend: S.mt.backend, model: S.mt.model }),
+    const res = await post("/api/translate", {
+      texts, backend: S.mt.backend, model: S.mt.model, target: targetLang(),
     });
+    if (epoch !== TR.epoch) { TR.active--; return; }
+    if (res.error && !TR.warned) { TR.warned = true; say(bodyError(res), 6000); }
     batch.forEach((pi, k) => {
-      const zh = res.items[k] || "";
-      ZH.state.set(pi, "done");
-      const el = document.querySelector(`.zh[data-pi="${pi}"]`);
+      const tr = res.items[k] || "";
+      TR.state.set(pi, "done");
+      const el = document.querySelector(`.tr[data-pi="${pi}"]`);
       if (!el) return;
-      if (zh) {
-        el.textContent = zh;
-        el.classList.remove("pending");
-      } else {
-        el.remove();
-      }
+      applyTrFace(el);
+      el.textContent = tr;
+      el.classList.remove("pending");
     });
   } catch (e) {
-    batch.forEach((pi) => {
-      ZH.state.delete(pi);                        // let it be retried later
-      const el = document.querySelector(`.zh[data-pi="${pi}"]`);
-      if (el) el.classList.add("pending");
-    });
+    if (epoch === TR.epoch) {
+      batch.forEach((pi) => {
+        TR.state.delete(pi);                        // let it be retried later
+        const el = document.querySelector(`.tr[data-pi="${pi}"]`);
+        if (el) el.classList.add("pending");
+      });
+    }
   }
-  ZH.active--;
-  scheduleZh(40);
+  TR.active--;
+  if (epoch === TR.epoch) scheduleTr(40);
+}
+
+/** Throw away every rendered translation and start again (target or model changed). */
+function resetTranslations() {
+  TR.epoch++;
+  TR.active = 0;
+  TR.warned = false;
+  TR.state.clear();
+  document.querySelectorAll(".tr").forEach((el) => {
+    applyTrFace(el);
+    el.textContent = "…";
+    el.classList.add("pending");
+  });
+  scheduleTr(0);
 }
 
 function observeParas() {
-  if (ZH.io) ZH.io.disconnect();
-  ZH.state.clear();
-  ZH.visible.clear();
-  ZH.io = new IntersectionObserver((entries) => {
+  if (TR.io) TR.io.disconnect();
+  TR.state.clear();
+  TR.visible.clear();
+  TR.io = new IntersectionObserver((entries) => {
     entries.forEach((e) => {
       const pi = Number(e.target.dataset.pi);
-      if (e.isIntersecting) ZH.visible.add(pi);
-      else ZH.visible.delete(pi);
+      if (e.isIntersecting) TR.visible.add(pi);
+      else TR.visible.delete(pi);
     });
-    scheduleZh(120);
+    scheduleTr(120);
   }, { rootMargin: "300px 0px" });
-  document.querySelectorAll(".para").forEach((el) => ZH.io.observe(el));
-  scheduleZh(120);
+  document.querySelectorAll(".para").forEach((el) => TR.io.observe(el));
+  scheduleTr(120);
+}
+
+/** Pick the (backend, model) for the current translation target. */
+function syncMt() {
+  const target = targetLang();
+  const chosen = (S.settings.mt_choice || {})[target];
+  const defs = (S.cfg && S.cfg.mt && S.cfg.mt.defaults) || {};
+  const d = defs[target] || {};
+  S.mt = chosen && chosen.model ? { backend: chosen.backend, model: chosen.model }
+    : { backend: d.backend || "", model: d.model || "" };
+  if (S.mt.backend === "none") S.mt = { backend: "", model: "" };
+}
+
+function applyShowTranslation() {
+  const on = !!S.settings.show_translation;
+  document.body.classList.toggle("hide-tr", !on);
+  $("zhToggle").setAttribute("aria-pressed", String(on));
+  if (on) scheduleTr(0);
+}
+
+function applyTargetLabels() {
+  const key = `header.translation_${targetLang()}`;
+  $("trLabel").setAttribute("data-i18n", key);
+  $("trLabel").textContent = t(key);
 }
 
 /* ---------------------------------------------------------------- lookup */
@@ -438,7 +621,7 @@ let popWord = "";
 
 function hidePop() { $("pop").hidden = true; }
 
-const WORD_CHAR = /[A-Za-z0-9'\u2019\-]/;
+const WORD_CHAR = /[A-Za-z0-9'’\-]/;
 const LETTER = /[A-Za-z]/;
 
 /** Grow a partial selection out to whole words, so dragging over "un" in "run"
@@ -473,6 +656,20 @@ function snapToWords(sel) {
   } catch (e) { /* the selection moved under us; keep what we had */ }
 }
 
+function setPopGloss(text) {
+  const el = $("popGloss");
+  el.lang = BACK().lang;
+  el.dir = BACK().dir;
+  el.textContent = text;
+}
+
+function setPopSave(state) {
+  const btn = $("popSave");
+  btn.dataset.state = state;
+  btn.setAttribute("data-i18n", state === "removed" ? "pop.removed" : "pop.saved_remove");
+  btn.textContent = t(btn.getAttribute("data-i18n"));
+}
+
 async function lookupSelection() {
   const sel = window.getSelection();
   if (!sel || !sel.rangeCount || !sel.toString().trim()) return;
@@ -486,41 +683,41 @@ async function lookupSelection() {
   const rect = sel.getRangeAt(0).getBoundingClientRect();
   const pop = $("pop");
   pop.hidden = false;
-  pop.style.left = Math.min(window.scrollX + rect.left, window.scrollX + window.innerWidth - 350) + "px";
+  const w = pop.offsetWidth || 350;
+  const left = Math.max(8, Math.min(window.scrollX + rect.left, window.scrollX + window.innerWidth - w - 8));
+  pop.style.left = left + "px";
   pop.style.top = window.scrollY + rect.bottom + 8 + "px";
   $("popWord").textContent = raw;
   $("popPhon").textContent = "";
-  $("popZh").textContent = "查询中…";
+  setPopGloss(t("pop.looking_up"));
   $("popDef").textContent = "";
   $("popSrc").textContent = "";
   popWord = raw;
 
   speakWord(raw);
+  const target = targetLang();
   try {
-    const d = await api("/api/lookup?q=" + encodeURIComponent(raw));
+    const d = await api(`/api/lookup?q=${encodeURIComponent(raw)}&target=${target}`);
     if (popWord !== raw) return;
     $("popWord").textContent = d.word + (d.lemma_of ? ` ← ${raw}` : "");
     $("popPhon").textContent = d.phonetic ? `/${d.phonetic}/` : "";
-    $("popZh").textContent = d.translation || "（未收录）";
+    setPopGloss(d.gloss || t("pop.not_found"));
     $("popDef").textContent = d.definition || "";
     $("popSrc").textContent = d.source;
     popWord = d.word;                     // remember the base form, not the inflection
-    $("popSave").textContent = "已收录 · 移除";
+    setPopSave("saved");
     // every lookup lands in the list, dated; repeats just bump the counter
-    await fetch("/api/vocab", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        word: d.word,
-        zh: d.translation || "",
-        phonetic: d.phonetic || "",
-        context: S.units[P.idx] ? S.units[P.idx].text : "",
-        doc_id: S.doc ? S.doc.doc_id : "",
-      }),
+    await post("/api/vocab", {
+      word: d.word,
+      zh: d.zh || (target === "zh" ? d.gloss : "") || "",
+      ar: target === "ar" ? d.gloss || "" : "",
+      phonetic: d.phonetic || "",
+      context: S.units[P.idx] ? S.units[P.idx].text : "",
+      doc_id: S.doc ? S.doc.doc_id : "",
     });
     loadVocab();
   } catch (e) {
-    $("popZh").textContent = "查询失败";
+    setPopGloss(t("pop.failed"));
   }
 }
 
@@ -542,39 +739,97 @@ async function speakWord(text) {
   }
 }
 
-/* ---------------------------------------------------------------- voices & models */
+/* ---------------------------------------------------------------- voices & settings */
+const SPEED_STEPS = [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5];
+const nearestSpeed = (v) => SPEED_STEPS.reduce((a, b) => (Math.abs(b - v) < Math.abs(a - v) ? b : a));
+
+function readingVoices() {
+  return ((S.cfg && S.cfg.tts.voices) || []).filter((v) => (v.lang || "en") === "en");
+}
+
 function applyConfig(cfg) {
   S.cfg = cfg;
-  const d = cfg.tts.default;
-  if (d && !S.engine) { S.engine = d.engine; S.voice = d.id; }
-  const cur = (cfg.tts.voices || []).find((v) => v.engine === S.engine && v.id === S.voice);
-  $("voiceNow").textContent = cur ? cur.label : "无可用引擎";
+  if (cfg.settings) S.settings = { ...S.settings, ...cfg.settings };
+  const wantVoice = S.settings.tts_voice;
+  if (!S.engine) {
+    const hit = wantVoice && readingVoices().find((v) => v.key === wantVoice);
+    const d = hit ? { engine: hit.engine, id: hit.id } : cfg.tts.default;
+    if (d) { S.engine = d.engine; S.voice = d.id; }
+  }
+  S.speed = nearestSpeed(Number(S.settings.tts_speed) || 0.8);
+  $("speed").value = String(S.speed);
   if (cfg.unit) $("unit").value = cfg.unit;
-  const md = cfg.mt.default || {};
-  if (!S.mt.backend) S.mt = { backend: md.backend || "", model: md.model || "" };
+  syncMt();
+  updateVoicePill();
+}
+
+function updateVoicePill() {
+  const cur = readingVoices().find((v) => v.engine === S.engine && v.id === S.voice);
+  $("voiceNow").textContent = cur ? cur.label : t("voice.none");
+}
+
+/* A reply to an older save must not undo a newer local change, so each key
+   remembers the last save that touched it and only that save's reply may update it. */
+const settingsRev = {};
+let settingsSeq = 0;
+
+/** Persist settings (merge) and return them. S.settings changes synchronously. */
+async function saveSettings(patch) {
+  const seq = ++settingsSeq;
+  Object.keys(patch).forEach((k) => { settingsRev[k] = seq; });
+  S.settings = { ...S.settings, ...patch };
+  try {
+    const stored = await post("/api/settings", patch);
+    // take the server's normalised value (clamped speed, …) for keys no newer save has touched
+    Object.keys(patch).forEach((k) => {
+      if (settingsRev[k] === seq && k in stored) S.settings[k] = stored[k];
+    });
+  } catch (e) { /* keep the local copy; the next save retries */ }
+  return S.settings;
+}
+
+function setVoice(v) {
+  S.engine = v.engine;
+  S.voice = v.id;
+  updateVoicePill();
+  resetAudio();
+  saveSettings({ tts_voice: v.key });
+}
+
+function engineTags(e) {
+  const tags = [];
+  if (e.cloning) tags.push(`<span class="eng-tag clone">${t("voice.tag_clone")}</span>`);
+  tags.push(`<span class="eng-tag">${t(e.network ? "voice.tag_online" : "voice.tag_local")}</span>`);
+  if (!e.speed) tags.push(`<span class="eng-tag">${t("voice.tag_client_speed")}</span>`);
+  if (e.loaded) tags.push(`<span class="eng-tag">${t("voice.tag_loaded")}</span>`);
+  return tags.join("");
 }
 
 function renderVoicePanel() {
   const cfg = S.cfg;
+  if (!cfg) return;
   const list = $("engineList");
   list.innerHTML = "";
   const usable = cfg.tts.engines.filter((e) => e.available).length;
-  $("voiceStat").textContent =
-    `${usable}/${cfg.tts.engines.length} 个引擎可用 · 克隆音色目录 ${cfg.tts.voices_dir}`;
+  $("voiceStat").textContent = t("voice.stat", { n: usable, total: cfg.tts.engines.length });
 
   cfg.tts.engines.forEach((e) => {
     const box = document.createElement("div");
     box.className = "eng" + (e.available ? "" : " off");
-    const tags = [
-      e.cloning ? '<span class="eng-tag clone">可克隆</span>' : "",
-      e.network ? '<span class="eng-tag">联网</span>' : '<span class="eng-tag">本地</span>',
-      e.speed ? "" : '<span class="eng-tag">变速由前端处理</span>',
-      e.loaded ? '<span class="eng-tag">已载入</span>' : "",
-    ].join("");
-    box.innerHTML = `<div class="eng-head">
-        <span class="eng-name">${e.label}</span>${tags}
-        <span class="eng-why">${e.available ? e.id : e.reason + " — " + e.notes}</span>
-      </div>`;
+    const head = document.createElement("div");
+    head.className = "eng-head";
+    const name = document.createElement("span");
+    name.className = "eng-name";
+    name.textContent = e.label;
+    name.dir = "ltr";
+    const why = document.createElement("span");
+    why.className = "eng-why";
+    why.dir = "ltr";
+    why.textContent = e.available ? e.id : `${e.reason} — ${e.notes}`;
+    head.appendChild(name);
+    head.insertAdjacentHTML("beforeend", engineTags(e));
+    head.appendChild(why);
+    box.appendChild(head);
 
     if (e.available) {
       const grid = document.createElement("div");
@@ -582,60 +837,33 @@ function renderVoicePanel() {
       cfg.tts.voices.filter((v) => v.engine === e.id).forEach((v) => {
         const row = document.createElement("label");
         const sel = v.engine === S.engine && v.id === S.voice;
+        const reading = (v.lang || "en") === "en";
         row.className = "vopt" + (sel ? " sel" : "");
+        row.dir = "ltr";
         row.innerHTML = `
-          <input type="checkbox" ${S.compare.has(v.key) ? "checked" : ""} title="加入对比">
-          <span class="vlab">${v.label}</span>
-          <span class="vacc">${v.accent || v.kind}</span>
-          <button class="icon" title="设为当前">◉</button>`;
+          <input type="checkbox" ${S.compare.has(v.key) ? "checked" : ""} ${reading ? "" : "disabled"}
+            title="${t("voice.add_compare")}" aria-label="${t("voice.add_compare")}">
+          <span class="vlab"></span>
+          <span class="vacc"></span>
+          <button class="icon" type="button" ${reading ? "" : "disabled"}
+            title="${t("voice.use")}" aria-label="${t("voice.use")}">◉</button>`;
+        row.querySelector(".vlab").textContent = v.label;
+        row.querySelector(".vacc").textContent = reading ? (v.accent || v.kind) : t("voice.arabic_only");
         row.querySelector("input").onchange = (ev) => {
           if (ev.target.checked) S.compare.add(v.key);
           else S.compare.delete(v.key);
-          $("abStat").textContent = `已选 ${S.compare.size} 个`;
+          $("abStat").textContent = t("voice.selected", { n: S.compare.size });
         };
         row.querySelector("button").onclick = (ev) => {
           ev.preventDefault();
-          S.engine = v.engine;
-          S.voice = v.id;
-          applyConfig(cfg);
+          setVoice(v);
           renderVoicePanel();
-          resetAudio();
         };
         grid.appendChild(row);
       });
       box.appendChild(grid);
     }
     list.appendChild(box);
-  });
-
-  const mt = $("mtList");
-  mt.innerHTML = "";
-  cfg.mt.backends.forEach((b) => {
-    if (!b.available) {
-      const row = document.createElement("div");
-      row.className = "mopt";
-      row.innerHTML = `<span>${b.label}</span><span class="mwhy">${b.reason} — ${b.notes}</span>`;
-      mt.appendChild(row);
-      return;
-    }
-    b.models.forEach((m) => {
-      const row = document.createElement("div");
-      const sel = S.mt.backend === b.id && S.mt.model === m.id;
-      row.className = "mopt" + (sel ? " sel" : "");
-      row.innerHTML = `<span>${m.label}</span><span class="mwhy">${b.id}</span>`;
-      row.onclick = () => {
-        S.mt = { backend: b.id, model: m.id };
-        renderVoicePanel();
-        ZH.state.clear();
-        document.querySelectorAll(".zh").forEach((el) => {
-          el.textContent = "…";
-          el.classList.add("pending");
-        });
-        scheduleZh(0);
-        say("翻译模型已切到 " + m.id + "，正在重译当前可见段落");
-      };
-      mt.appendChild(row);
-    });
   });
 }
 
@@ -656,14 +884,14 @@ async function openVoicePanel() {
       (S.units[P.idx] ? S.units[P.idx].text : "The quick brown fox jumps over the lazy dog.");
     renderVoicePanel();
   } catch (err) {
-    $("engineList").textContent = "读取配置失败：" + (err && err.message ? err.message : err);
+    $("engineList").textContent = t("voice.config_failed", { msg: errText(err) });
     console.error("renderVoicePanel failed", err);
   }
 }
 
 async function comparePlay() {
   const keys = [...S.compare];
-  if (!keys.length) { say("先勾选两个以上音色"); return; }
+  if (!keys.length) { sayKey("voice.pick_some"); return; }
   const text = $("abText").value.trim();
   if (!text) return;
   const wasPlaying = P.playing;
@@ -672,7 +900,7 @@ async function comparePlay() {
   for (const key of keys) {
     const [engine, voice] = key.split("|");
     const v = S.cfg.tts.voices.find((x) => x.key === key);
-    $("abStat").textContent = `正在播放：${v ? v.label : key}`;
+    $("abStat").textContent = t("voice.playing", { name: v ? v.label : key });
     try {
       const { buffer, rate } = await fetchClip(text, engine, voice, S.speed);
       await new Promise((done) => {
@@ -684,11 +912,59 @@ async function comparePlay() {
         node.start();
       });
     } catch (e) {
-      $("abStat").textContent = `${key} 失败：${e.message}`;
+      $("abStat").textContent = t("voice.play_failed", { name: key, msg: errText(e) });
       await new Promise((r) => setTimeout(r, 1200));
     }
   }
-  $("abStat").textContent = `已播完 ${keys.length} 个`;
+  $("abStat").textContent = t("voice.played", { n: keys.length });
+}
+
+/* ---------------------------------------------------------------- hints
+   Every card is in English by default. A "Show Arabic hint" button asks the local
+   tutor model for a short explanation in Arabic (or Chinese when that is the
+   translation target) — only when pressed, and cached by the server. */
+const hintLangName = () => t(`hint.lang_${targetLang()}`);
+
+function relabelHintButton(btn) {
+  const open = btn.dataset.open === "1";
+  btn.textContent = open ? t("hint.hide") : t("hint.show", { lang: hintLangName() });
+}
+
+function setupHintButton(btn, box, makePayload) {
+  btn.dataset.hint = "1";
+  btn.dataset.open = "0";
+  btn.dataset.loaded = "";
+  relabelHintButton(btn);
+  btn.onclick = async () => {
+    if (btn.dataset.open === "1") {
+      btn.dataset.open = "0"; box.hidden = true; relabelHintButton(btn); return;
+    }
+    const lang = targetLang();
+    box.hidden = false; box.classList.remove("error");
+    box.lang = BACK().lang; box.dir = BACK().dir;
+    if (btn.dataset.loaded !== lang) {
+      box.textContent = t("hint.loading");
+      btn.disabled = true;
+      try {
+        const d = await post("/api/hint", { ...makePayload(), lang });
+        if (d.error_key || d.error) {
+          box.classList.add("error"); box.lang = document.documentElement.lang; box.dir = uiDir();
+          box.textContent = bodyError(d);
+        } else { box.textContent = d.hint; btn.dataset.loaded = lang; }
+      } catch (e) {
+        box.classList.add("error"); box.lang = document.documentElement.lang; box.dir = uiDir();
+        box.textContent = errText(e);
+      }
+      btn.disabled = false;
+    }
+    btn.dataset.open = "1";
+    relabelHintButton(btn);
+  };
+  return btn;
+}
+
+function relabelAllHints() {
+  document.querySelectorAll("[data-hint]").forEach(relabelHintButton);
 }
 
 /* ---------------------------------------------------------------- vocabulary */
@@ -703,14 +979,41 @@ async function loadVocab() {
 
 function dayKey(ts) {
   const d = new Date((ts || 0) * 1000);
-  return d.toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "02-digit" });
+  // Latin digits in both languages: numerals stay consistent with the English text being studied
+  const loc = document.documentElement.lang === "ar" ? "ar-u-nu-latn" : "en-GB";
+  return d.toLocaleDateString(loc, { year: "numeric", month: "2-digit", day: "2-digit" });
+}
+
+const glossOf = (it) => (targetLang() === "ar" ? it.ar : it.zh) || "";
+
+/** Save-time glosses only exist for the language that was active then; fill in
+ *  the other one on demand so the list and the flashcards are never blank. */
+let glossBusy = false;
+async function ensureGlosses(items) {
+  if (glossBusy) return;
+  glossBusy = true;
+  const lang = targetLang();
+  try {
+    for (const it of items.filter((x) => !glossOf(x)).slice(0, 40)) {
+      if (lang !== targetLang()) break;
+      const d = await post("/api/vocab/gloss", { word: it.word, lang });
+      if (d.gloss) {
+        it[lang === "ar" ? "ar" : "zh"] = d.gloss;
+        if (!it.phonetic && d.phonetic) it.phonetic = d.phonetic;
+        document.querySelectorAll(`.vrow[data-word="${CSS.escape(it.word)}"] .vgloss`).forEach((el) => {
+          el.textContent = d.gloss.replace(/\n/g, " / ");
+        });
+      }
+    }
+  } catch (e) { /* the list works without glosses */ }
+  glossBusy = false;
 }
 
 function renderVocab() {
   const list = $("vocabList");
   list.innerHTML = "";
   const known = V.items.filter((x) => x.known).length;
-  $("vocabStat").textContent = `${V.items.length} 词 · 已掌握 ${known}`;
+  $("vocabStat").textContent = t("vocab.stat", { n: V.items.length, known });
 
   const days = new Map();
   V.items.forEach((it) => {
@@ -720,7 +1023,10 @@ function renderVocab() {
   });
 
   if (!days.size) {
-    list.innerHTML = '<p class="vocab-date" style="text-align:center;border:0">还没有查过词</p>';
+    const p = document.createElement("p");
+    p.className = "vocab-empty";
+    p.textContent = t("vocab.empty");
+    list.appendChild(p);
     return;
   }
 
@@ -735,26 +1041,30 @@ function renderVocab() {
     items.forEach((it) => {
       const row = document.createElement("div");
       row.className = "vrow" + (it.known ? " known" : "");
+      row.dataset.word = it.word;
       row.innerHTML = `
-        <div class="vword">${it.word}${it.phonetic ? `<span>/${it.phonetic}/</span>` : ""}${
-        (it.hits || 1) > 1 ? `<span>×${it.hits}</span>` : ""}${
-        it.best ? `<span>${it.best}分</span>` : ""}</div>
-        <div class="vzh"></div>
+        <div class="vword" dir="ltr" lang="en"><span class="w"></span><span class="ph"></span><span class="hits"></span><span class="best"></span></div>
+        <div class="vgloss"></div>
         <div class="vact">
-          <button class="icon" data-act="say" title="发音">▶</button>
-          <button class="icon" data-act="known" title="标记认识">${it.known ? "↺" : "✓"}</button>
-          <button class="icon" data-act="del" title="删除">✕</button>
+          <button class="icon" type="button" data-act="say" title="${t("vocab.say")}" aria-label="${t("vocab.say")}">▶</button>
+          <button class="icon" type="button" data-act="known" title="${t(it.known ? "vocab.unknown" : "vocab.known")}" aria-label="${t(it.known ? "vocab.unknown" : "vocab.known")}">${it.known ? "↺" : "✓"}</button>
+          <button class="icon" type="button" data-act="del" title="${t("vocab.delete")}" aria-label="${t("vocab.delete")}">✕</button>
         </div>`;
-      row.querySelector(".vzh").textContent = (it.zh || "").replace(/\n/g, " / ");
+      const w = row.querySelector(".vword");
+      w.querySelector(".w").textContent = it.word;
+      if (it.phonetic) w.querySelector(".ph").textContent = `/${it.phonetic}/`;
+      if ((it.hits || 1) > 1) w.querySelector(".hits").textContent = `×${it.hits}`;
+      if (it.best) w.querySelector(".best").textContent = it.best;
+      const g = row.querySelector(".vgloss");
+      g.lang = BACK().lang;
+      g.dir = BACK().dir;
+      g.textContent = glossOf(it).replace(/\n/g, " / ");
       row.querySelector(".vact").onclick = async (e) => {
         const act = e.target.dataset.act;
         if (!act) return;
         if (act === "say") speakWord(it.word);
         if (act === "known") {
-          await fetch("/api/vocab/known", {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ word: it.word, known: it.known ? 0 : 1 }),
-          });
+          await post("/api/vocab/known", { word: it.word, known: it.known ? 0 : 1 });
           await loadVocab(); renderVocab();
         }
         if (act === "del") {
@@ -766,6 +1076,7 @@ function renderVocab() {
     });
     list.appendChild(sec);
   });
+  ensureGlosses(V.items);
 }
 
 async function openVocab() {
@@ -773,94 +1084,164 @@ async function openVocab() {
   // button looking dead, with the exception swallowed by the async call
   $("vocabPanel").hidden = false;
   $("vocabStat").textContent = "";
-  $("vocabList").innerHTML = '<p class="vocab-date" style="border:0">读取中…</p>';
+  $("vocabList").innerHTML = `<p class="vocab-empty">${t("common.loading")}</p>`;
   try {
     await loadVocab();
     renderVocab();
   } catch (err) {
-    $("vocabList").innerHTML = "";
-    $("vocabList").textContent = "生词本打不开：" + (err && err.message ? err.message : err);
+    $("vocabList").textContent = t("vocab.open_failed", { msg: errText(err) });
     console.error("renderVocab failed", err);
   }
 }
 
 async function mergeVocab() {
-  say("正在合并…", 0);
+  sayKey("vocab.merging", null, 0);
   const r = await api("/api/vocab/merge", { method: "POST" });
   await loadVocab();
   renderVocab();
-  say(`合并 ${r.groups} 组，删掉 ${r.removed} 个重复，现有 ${r.total} 词`, 3500);
+  sayKey("vocab.merged", { groups: r.groups, removed: r.removed, total: r.total }, 3500);
 }
 
-/* ---------------------------------------------------------------- flashcards */
+/* ---------------------------------------------------------------- flashcards
+   English on the front (always LTR); the gloss on the back (RTL for Arabic) is
+   optional — the learner can switch it off and flip to just the example
+   sentence. Cards come due-first; grading a card schedules its next review. */
+const SHOW_GLOSS_KEY = "lumen.flashGloss";
+
 function flashPool() {
   const only = $("onlyUnknown").checked;
-  return V.items.filter((x) => (only ? !x.known : true));
+  return window.LumenFlash.sortDue(V.items.filter((x) => (only ? !x.known : true)));
+}
+
+function renderFlashKeys() {
+  const L = window.LumenLayout;
+  const dir = uiDir();
+  const arrow = (k) => (k === "ArrowLeft" ? "←" : "→");
+  const keys = [
+    ["↑", "flash.k_listen"], ["↓", "flash.k_flip"],
+    ["R", REC.on ? "flash.k_stop" : "flash.k_record"],
+    [arrow(L.prevKey(dir)), "flash.k_prev"], [arrow(L.nextKey(dir)), "flash.k_next"],
+    ["1–4", "flash.k_grade"], ["Enter", "flash.k_known"], ["Space", "flash.k_delete"], ["Esc", "flash.k_exit"],
+  ];
+  const box = $("flashKeys");
+  box.innerHTML = "";
+  keys.forEach(([k, label]) => {
+    const s = document.createElement("span");
+    const kbd = document.createElement("kbd");
+    kbd.dir = "ltr";
+    kbd.textContent = k;
+    s.append(kbd, " ", t(label));
+    box.appendChild(s);
+  });
+}
+
+function ensureGradeButtons() {
+  if ($("grades")) return;
+  const row = document.createElement("div");
+  row.id = "grades";
+  row.className = "grades";
+  [["flash.again", 0], ["flash.hard", 1], ["flash.good", 2], ["flash.easy", 3]].forEach(([key, g]) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "ghost";
+    b.dataset.grade = g;
+    b.setAttribute("data-i18n", key);
+    b.textContent = t(key);
+    b.onclick = () => flashGrade(g);
+    row.appendChild(b);
+  });
+  $("flashBack").appendChild(row);
 }
 
 function openFlash() {
   const pool = flashPool();
-  if (!pool.length) { say("没有可练的词"); return; }
-  V.flash = { list: pool, i: 0, zh: false };
+  if (!pool.length) { sayKey("flash.empty"); return; }
+  ensureGradeButtons();
+  V.flash = { list: pool, i: 0, back: false };
   $("flash").hidden = false;
+  renderFlashKeys();
   paintFlash();
 }
 
 function closeFlash() {
   V.flash = null;
   $("flash").hidden = true;
-  loadVocab().then(renderVocab);
+  loadVocab().then(() => { if (!$("vocabPanel").hidden) renderVocab(); });
 }
 
 async function paintFlash() {
   const f = V.flash;
   if (!f) return;
   const it = f.list[f.i];
-  $("flashWord").textContent = it.word;
-  $("flashPhon").textContent = it.phonetic ? `/${it.phonetic}/` : "";
-  const badges = [it.known ? "已掌握" : "", it.best ? `最好 ${it.best} 分` : ""]
+  const showGloss = mem.get(SHOW_GLOSS_KEY, "1") === "1";
+  const m = window.LumenFlash.cardModel(it, { target: targetLang(), uiDir: uiDir(), showBack: f.back });
+
+  const word = $("flashWord");
+  word.textContent = m.front.text; word.dir = m.front.dir; word.lang = m.front.lang;
+  $("flashPhon").textContent = m.front.ipa;
+  const badges = [it.known ? t("flash.known") : "", it.best ? t("flash.best", { n: it.best }) : ""]
     .filter(Boolean).join(" · ");
   $("flashCount").textContent = `${f.i + 1} / ${f.list.length}${badges ? " · " + badges : ""}`;
   $("flashRail").style.width = ((f.i + 1) / f.list.length) * 100 + "%";
 
   $("flashScore").hidden = true;
   if (REC.on) stopRec();
-  const zhEl = $("flashZh");
-  const ctxEl = $("flashCtx");
-  zhEl.hidden = !f.zh;
-  ctxEl.hidden = !f.zh || !it.context;
-  if (!f.zh) return;
 
-  ctxEl.textContent = it.context || "";
-  if (it.zh) { zhEl.textContent = it.zh; return; }
-  zhEl.textContent = "查询中…";
+  $("flashBack").hidden = !f.back;
+  if (!f.back) return;
+  const g = $("flashGlossEl");
+  g.hidden = !showGloss;
+  g.lang = m.back.lang; g.dir = m.back.dir;
+  g.classList.remove("empty-gloss");
+  const ctxEl = $("flashCtx");
+  ctxEl.hidden = !m.context.text;
+  ctxEl.textContent = m.context.text;
+  if (!showGloss) return;
+  if (m.back.text) { g.textContent = m.back.text; return; }
+  g.textContent = t("pop.looking_up");
   try {
-    const d = await api("/api/lookup?q=" + encodeURIComponent(it.word));
-    it.zh = d.translation || d.definition || "（未收录）";
+    const d = await post("/api/vocab/gloss", { word: it.word, lang: targetLang() });
+    it[targetLang() === "ar" ? "ar" : "zh"] = d.gloss;
     it.phonetic = it.phonetic || d.phonetic;
-    if (V.flash && V.flash.list[V.flash.i] === it && V.flash.zh) {
-      zhEl.textContent = it.zh;
+    if (V.flash && V.flash.list[V.flash.i] === it && V.flash.back) {
+      g.textContent = d.gloss || t("pop.not_found");
+      if (!d.gloss) g.classList.add("empty-gloss");
       $("flashPhon").textContent = it.phonetic ? `/${it.phonetic}/` : "";
     }
   } catch (e) {
-    zhEl.textContent = "查询失败";
+    g.textContent = t("pop.failed");
+    g.classList.add("empty-gloss");
   }
 }
 
 function flashStep(d) {
   const f = V.flash;
+  if (!f) return;                       // closed while a request was in flight
   f.i = (f.i + d + f.list.length) % f.list.length;
-  f.zh = false;
+  f.back = false;
   paintFlash();
 }
 
+function flashFlip() {
+  const f = V.flash;
+  if (!f) return;
+  f.back = !f.back;
+  paintFlash();
+}
+
+async function flashGrade(grade) {
+  const f = V.flash;
+  if (!f || !f.back) { sayKey("flash.flip_first"); return; }
+  const it = f.list[f.i];
+  await post("/api/vocab/review", { word: it.word, grade });
+  flashStep(1);
+}
+
 async function flashKnown() {
+  if (!V.flash) return;
   const it = V.flash.list[V.flash.i];
   it.known = 1;
-  await fetch("/api/vocab/known", {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ word: it.word, known: 1 }),
-  });
+  await post("/api/vocab/known", { word: it.word, known: 1 });
   flashStep(1);
 }
 
@@ -873,7 +1254,7 @@ const REC = { stream: null, ctx: null, node: null, chunks: [], sr: 48000, on: fa
 function encodeWav(samples, sr) {
   const buf = new ArrayBuffer(44 + samples.length * 2);
   const view = new DataView(buf);
-  const str = (off, t) => { for (let i = 0; i < t.length; i++) view.setUint8(off + i, t.charCodeAt(i)); };
+  const str = (off, s) => { for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i)); };
   str(0, "RIFF"); view.setUint32(4, 36 + samples.length * 2, true); str(8, "WAVE");
   str(12, "fmt "); view.setUint32(16, 16, true); view.setUint16(20, 1, true);
   view.setUint16(22, 1, true); view.setUint32(24, sr, true);
@@ -892,7 +1273,7 @@ async function startRec() {
   // getUserMedia only exists in a secure context: https, or a localhost origin.
   // Over plain http to a remote box the API is simply absent.
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    say("麦克风需要 HTTPS 或 localhost — 用 SSH 端口转发访问即可", 7000);
+    sayKey("err.mic_insecure", null, 7000);
     return;
   }
   try {
@@ -900,7 +1281,7 @@ async function startRec() {
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
     });
   } catch (e) {
-    say("拿不到麦克风权限", 4000);
+    sayKey("err.mic_denied", null, 4000);
     return;
   }
   REC.ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -915,16 +1296,16 @@ async function startRec() {
   REC.node.connect(REC.ctx.destination);
   REC.on = true;
   document.body.classList.add("recording");
-  $("recLabel").textContent = "结束并评分";
+  renderFlashKeys();
 }
 
 function stopRec() {
   if (!REC.on) return null;
   REC.on = false;
   document.body.classList.remove("recording");
-  $("recLabel").textContent = "跟读评分";
+  renderFlashKeys();
   try { REC.node.disconnect(); } catch (e) {}
-  REC.stream.getTracks().forEach((t) => t.stop());
+  REC.stream.getTracks().forEach((tr) => tr.stop());
   const total = REC.chunks.reduce((n, c) => n + c.length, 0);
   const all = new Float32Array(total);
   let off = 0;
@@ -938,14 +1319,16 @@ function stopRec() {
 async function scoreRecording() {
   const blob = stopRec();
   const it = V.flash ? V.flash.list[V.flash.i] : null;
-  if (!blob || !it) { say("录得太短了", 3000); return; }
+  if (!blob || !it) { sayKey("score.too_short", null, 3000); return; }
 
   const box = $("flashScore");
   box.hidden = false;
   $("scoreNum").textContent = "…";
   $("scoreNum").className = "score-num";
-  $("scoreNote").textContent = "正在评分";
+  $("scoreNote").textContent = t("score.scoring");
   $("scorePhon").innerHTML = "";
+  $("scoreHintBtn").hidden = true;
+  $("scoreHint").hidden = true;
 
   const fd = new FormData();
   fd.append("file", blob, "rec.wav");
@@ -957,45 +1340,56 @@ async function scoreRecording() {
     const d = await r.json();
     if (!r.ok || !d.ok) {
       $("scoreNum").textContent = "–";
-      $("scoreNote").textContent = d.error || d.detail || "评分失败";
+      const det = d.detail && typeof d.detail === "object" ? d.detail : null;
+      $("scoreNote").textContent = det ? errText({ key: det.key, message: det.msg }) : bodyError(d);
       return;
     }
     it.best = Math.max(it.best || 0, d.score);
     $("scoreNum").textContent = d.score;
-    $("scoreNum").className = "score-num " +
-      (d.score >= 85 ? "good" : d.score >= 60 ? "mid" : "poor");
+    $("scoreNum").className = "score-num " + (d.score >= 85 ? "good" : d.score >= 60 ? "mid" : "poor");
+    // the summary is English-first: how many sounds, and the sounds themselves
     $("scoreNote").textContent = d.problems.length
-      ? `${d.problems.length} 个音不对`
-      : "全部对上了";
+      ? t("score.n_off", { n: d.problems.length }) : t("score.all_ok");
     $("scorePhon").innerHTML = d.ops.map((o) => {
       if (o.op === "ok") return `<span class="ph ok">${o.target}</span>`;
       if (o.op === "sub") return `<span class="ph sub">${o.target}<small>→${o.heard}</small></span>`;
       if (o.op === "miss") return `<span class="ph miss">${o.target}</span>`;
       return `<span class="ph extra">${o.heard}</span>`;
     }).join("");
+    if (d.problems.length) {
+      const btn = $("scoreHintBtn");
+      btn.hidden = false;
+      setupHintButton(btn, $("scoreHint"), () => ({ kind: "pronunciation", word: it.word, ops: d.problems }));
+      if (S.settings.arabic_hints) btn.click();
+    }
   } catch (e) {
     $("scoreNum").textContent = "–";
-    $("scoreNote").textContent = "评分失败：" + e.message;
+    $("scoreNote").textContent = t("score.failed", { msg: errText(e) });
   }
 }
 
 async function flashDelete() {
   const f = V.flash;
+  if (!f) return;
   const it = f.list[f.i];
   await fetch("/api/vocab/" + encodeURIComponent(it.word), { method: "DELETE" });
   f.list.splice(f.i, 1);
   V.items = V.items.filter((x) => x.word !== it.word);
   $("vocabCount").textContent = V.items.length;
-  say(`已删除 ${it.word}`, 1800);
+  sayKey("flash.deleted", { word: it.word }, 1800);
   if (!f.list.length) { closeFlash(); return; }
   if (f.i >= f.list.length) f.i = 0;
-  f.zh = false;
+  f.back = false;
   paintFlash();
 }
 
 function flashKey(e) {
   const f = V.flash;
   if (!f) return false;
+  const L = window.LumenLayout;
+  const dir = uiDir();
+  if (e.key === L.nextKey(dir)) { flashStep(1); e.preventDefault(); return true; }
+  if (e.key === L.prevKey(dir)) { flashStep(-1); e.preventDefault(); return true; }
   switch (e.key) {
     case "ArrowUp":
       speakWord(f.list[f.i].word);
@@ -1003,14 +1397,13 @@ function flashKey(e) {
       void $("flash").offsetWidth;
       $("flash").classList.add("spoke");
       break;
-    case "ArrowDown": f.zh = !f.zh; paintFlash(); break;
+    case "ArrowDown": flashFlip(); break;
+    case "1": case "2": case "3": case "4": flashGrade(Number(e.key) - 1); break;
     case " ": flashDelete(); break;
     case "r": case "R":
       if (REC.on) scoreRecording();
       else startRec();
       break;
-    case "ArrowRight": flashStep(1); break;
-    case "ArrowLeft": flashStep(-1); break;
     case "Enter": flashKnown(); break;
     case "Escape": closeFlash(); break;
     default: return false;
@@ -1033,7 +1426,7 @@ function frame() {
       P.idx = idx;
       scrollToUnit(idx);
       saveProgress();
-      if (paraChanged) scheduleZh(0);
+      if (paraChanged) scheduleTr(0);
     }
     const [m0, m1] = rec.marks[si];
     paint(idx, Math.max(0, Math.min(1, (frac - m0) / Math.max(1e-6, m1 - m0))));
@@ -1041,9 +1434,12 @@ function frame() {
     paint(P.idx, P.playing ? 0 : -1);
   }
   const f = S.units.length > 1 ? P.idx / (S.units.length - 1) : 0;
-  $("trackFill").style.width = f * 100 + "%";
-  $("trackKnob").style.left = f * 100 + "%";
-  $("counter").textContent = `${P.idx + 1} / ${S.units.length}`;
+  // inset-inline-start follows the UI direction: the track fills from the right in Arabic
+  $("trackFill").style.inlineSize = f * 100 + "%";
+  $("trackKnob").style.insetInlineStart = f * 100 + "%";
+  updateCounter();
+  const pj = $("pageJump");
+  if (document.activeElement !== pj) pj.value = String(currentPage());
 }
 
 let lastSaved = 0;
@@ -1056,19 +1452,15 @@ function saveProgress(force = false) {
   const body = JSON.stringify({ doc_id: S.doc.doc_id, para: u.pi, sent: u.si });
   // on the way out fetch() gets cancelled with the page; sendBeacon survives it
   if (force && navigator.sendBeacon) {
-    navigator.sendBeacon("/api/progress",
-      new Blob([body], { type: "application/json" }));
+    navigator.sendBeacon("/api/progress", new Blob([body], { type: "application/json" }));
     return;
   }
-  fetch("/api/progress", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body,
-  }).catch(() => {});
+  fetch("/api/progress", { method: "POST", headers: { "Content-Type": "application/json" }, body })
+    .catch(() => {});
 }
 
 let painted = -1;
-function paint(i, t) {
+function paint(i, tt) {
   if (painted !== i) {
     document.querySelectorAll(".sent.speaking").forEach((el) => {
       el.classList.remove("speaking");
@@ -1084,7 +1476,7 @@ function paint(i, t) {
     painted = i;
   }
   const el = unitEl(i);
-  if (el && t >= 0) el.style.setProperty("--fill", t);
+  if (el && tt >= 0) el.style.setProperty("--fill", tt);
 }
 
 /* ---------------------------------------------------------------- nav */
@@ -1095,56 +1487,142 @@ function stepPara(d) {
   if (!cur) return;
   // already partway into a block: "previous" means the top of this one
   const atTop = cur.si === 0;
-  const bi = Math.max(0, Math.min(S.blocks.length - 1,
-    cur.bi + (d < 0 && !atTop ? 0 : d)));
+  const bi = Math.max(0, Math.min(S.blocks.length - 1, cur.bi + (d < 0 && !atTop ? 0 : d)));
   startAt(S.blocks[bi].unit0);
 }
 
-/* ---------------------------------------------------------------- boot */
+/* ---------------------------------------------------------------- opening documents */
 /** Windows reports an empty MIME type when no app is registered for .pdf,
  *  so trust the extension too — and never fail silently. */
 function acceptFile(file) {
-  if (!file) { say("没读到文件", 4000); return; }
+  if (!file) { sayKey("open.no_file", null, 4000); return; }
   const exts = (S.cfg && S.cfg.formats) || [".pdf", ".txt", ".md", ".html", ".epub"];
   const name = file.name || "";
-  const ok = exts.some((e) => name.toLowerCase().endsWith(e)) ||
-             file.type === "application/pdf";
+  const ok = exts.some((e) => name.toLowerCase().endsWith(e)) || file.type === "application/pdf";
   if (!ok) {
-    say(`读不了「${name || "未知文件"}」，支持 ${exts.join(" ")}`, 5000);
+    sayKey("open.unsupported", { name: name || "?", formats: exts.join(" ") }, 5000);
     return;
   }
   openFile(file);
 }
 
-async function openFile(file) {
-  say("正在解析 PDF…", 0);
-  const fd = new FormData();
-  fd.append("file", file);
-  try {
-    const doc = await api("/api/open", { method: "POST", body: fd });
-    render(doc);
-    say(`${doc.pages} 页 · ${doc.paragraphs.length} 段 · ${S.units.length} 句`);
-  } catch (e) {
-    say("打不开：" + e.message, 6000);
+function showOcr(done, total) {
+  const box = $("ocrBox");
+  box.hidden = false;
+  $("ocrText").textContent = total
+    ? t("ocr.progress", { done: Math.min(done + 1, total), total }) : t("ocr.starting");
+  $("ocrFill").style.inlineSize = total ? Math.round((done / total) * 100) + "%" : "4%";
+}
+
+async function pollJob(job) {
+  showOcr(job.done, job.total);
+  for (;;) {
+    await new Promise((r) => setTimeout(r, 700));
+    const j = await api(`/api/job/${job.id}`);
+    showOcr(j.done, j.total);
+    if (j.state === "done") return j;
+    if (j.state === "error") {
+      throw new ApiError((j.error && j.error.msg) || "", j.error && j.error.key);
+    }
   }
 }
 
+async function openFile(file) {
+  const isPdf = /\.pdf$/i.test(file.name || "");
+  say(t(isPdf ? "open.parsing_pdf" : "open.parsing"), 0);
+  const fd = new FormData();
+  fd.append("file", file);
+  try {
+    let doc = await api("/api/open", { method: "POST", body: fd });
+    if (doc.job) {
+      // a scanned PDF: Tesseract reads it page by page in the background
+      say(t("ocr.scanned_found"), 0);
+      const j = await pollJob(doc.job);
+      doc = await api(`/api/doc/${j.result.doc_id}`);
+    }
+    $("ocrBox").hidden = true;
+    render(doc);
+    sayKey("open.done", { pages: doc.pages, paras: doc.paragraphs.length, sents: S.units.length });
+    const ocr = doc.meta && doc.meta.ocr;
+    if (ocr && ocr.used && ocr.note === "ara_missing") sayKey("ocr.ara_missing", null, 8000);
+    else if (ocr && ocr.skipped && ocr.skipped.length) sayKey("ocr.skipped_pages", { n: ocr.skipped.length }, 7000);
+    else if (doc.meta && doc.meta.lang === "ar") sayKey("reader.arabic_doc", null, 7000);
+  } catch (e) {
+    $("ocrBox").hidden = true;
+    say(t("open.failed", { msg: errText(e) }), 7000);
+  }
+}
+
+/* ---------------------------------------------------------------- language, theme, scale */
+async function setUiLang(pref) {
+  await window.LumenI18n.setPreference(pref);
+  mem.set("lumen.langpref", pref);
+  $("langSwitch").value = pref;
+  saveSettings({ ui_lang: pref });
+}
+
+function applyTheme(pref) {
+  const theme = window.LumenLayout.applyTheme(pref);
+  window.LumenLayout.remember(null, pref, window);
+  return theme;
+}
+
+function applyTextScale() {
+  const pct = Math.max(80, Math.min(150, Number(S.settings.text_scale) || 100));
+  document.documentElement.style.setProperty("--text-scale", String(pct / 100));
+}
+
+/** Everything built from JS (not data-i18n markup) is re-rendered here. */
+function onLangChange() {
+  const pref = window.LumenI18n.pref;
+  $("langSwitch").value = pref;
+  applyTargetLabels();
+  updateVoicePill();
+  setPopSave($("popSave").dataset.state || "saved");
+  relabelAllHints();
+  if (S.doc) document.title = `${S.doc.title} · LumenRead`;
+  if (!$("voicePanel").hidden) renderVoicePanel();
+  if (!$("vocabPanel").hidden) renderVocab();
+  if (V.flash) { renderFlashKeys(); paintFlash(); }
+  document.body.setAttribute("data-drop", t("open.drop"));
+}
+
+/* ---------------------------------------------------------------- boot */
 async function boot() {
-  document.body.classList.toggle("hide-zh", false);
+  const L = window.LumenI18n;
+  try { await L.setPreference(mem.get("lumen.langpref", "system")); }
+  catch (e) { console.error("i18n failed", e); }
+  window.addEventListener("lumen:langchange", onLangChange);
+  $("langSwitch").value = L.pref;
+  $("langSwitch").onchange = (e) => setUiLang(e.target.value);
+  document.body.setAttribute("data-drop", t("open.drop"));
 
   try {
     applyConfig(await api("/api/config"));
-    if (!S.cfg.tts.default) say("没有可用的朗读引擎 — 点「语音」看每个引擎缺什么", 9000);
-    else if (!S.mt.model) say("朗读已就绪，但没有翻译后端 — 点「语音」挑一个", 6000);
+    // the server copy of the settings is the source of truth for the language
+    if (S.settings.ui_lang && S.settings.ui_lang !== L.pref) {
+      await L.setPreference(S.settings.ui_lang);
+      mem.set("lumen.langpref", S.settings.ui_lang);
+    }
+    applyTheme(S.settings.theme || "system");
+    applyTextScale();
+    applyTargetLabels();
+    applyShowTranslation();
+    if (!S.cfg.tts.default) sayKey("boot.no_engine", null, 9000);
+    else if (!S.mt.model) sayKey("boot.no_translation", null, 6000);
   } catch (e) {
-    say("连不上后端服务", 6000);
+    sayKey("err.backend_down", null, 6000);
   }
 
   $("fileInput").addEventListener("change", (e) => {
     if (e.target.files[0]) acceptFile(e.target.files[0]);
     e.target.value = "";                  // allow re-opening the same file
   });
-  $("empty").addEventListener("click", () => $("fileInput").click());
+  const openPicker = () => $("fileInput").click();
+  $("empty").addEventListener("click", openPicker);
+  $("empty").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openPicker(); }
+  });
 
   let dragDepth = 0;
   document.addEventListener("dragenter", (e) => {
@@ -1161,10 +1639,7 @@ async function boot() {
     dragDepth = 0;
     document.body.classList.remove("dragging");
     const dt = e.dataTransfer;
-    if (!dt || !dt.files || !dt.files.length) {
-      say("没收到文件 — 从资源管理器里拖，不要从压缩包里拖", 5000);
-      return;
-    }
+    if (!dt || !dt.files || !dt.files.length) { sayKey("open.no_drop", null, 5000); return; }
     acceptFile(dt.files[0]);
   });
 
@@ -1175,8 +1650,7 @@ async function boot() {
   $("nextPara").onclick = () => stepPara(1);
 
   const seek = (e) => {
-    const r = $("track").getBoundingClientRect();
-    const f = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+    const f = window.LumenLayout.trackFraction(e.clientX, $("track").getBoundingClientRect(), uiDir());
     startAt(Math.round(f * (S.units.length - 1)));
   };
   $("track").addEventListener("pointerdown", (e) => {
@@ -1189,6 +1663,13 @@ async function boot() {
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
   });
+
+  const pj = $("pageJump");
+  pj.addEventListener("keydown", (e) => {
+    e.stopPropagation();
+    if (e.key === "Enter") { jumpToPage(pj.value); pj.blur(); }
+  });
+  pj.addEventListener("change", () => jumpToPage(pj.value));
 
   // a double-click is the natural "look this word up" gesture, but its first
   // click would otherwise start playback — hold the play action briefly and
@@ -1214,9 +1695,9 @@ async function boot() {
   });
 
   $("popPlay").onclick = () => speakWord(popWord);
-  $("popSave").onclick = async (e) => {
+  $("popSave").onclick = async () => {
     await fetch("/api/vocab/" + encodeURIComponent(popWord), { method: "DELETE" });
-    e.target.textContent = "已移除";
+    setPopSave("removed");
     loadVocab();
   };
 
@@ -1224,15 +1705,15 @@ async function boot() {
   $("closeVoice").onclick = () => { $("voicePanel").hidden = true; };
   $("abPlay").onclick = comparePlay;
   $("rescanBtn").onclick = async () => {
-    applyConfig(await api("/api/rescan", { method: "POST" }));
+    applyConfig(await post("/api/rescan"));
     renderVoicePanel();
-    say("已重新扫描 models/ 目录");
+    sayKey("voice.rescanned");
   };
   $("unloadBtn").onclick = async () => {
     await fetch("/api/tts/unload", { method: "POST" });
     applyConfig(await api("/api/config"));
     renderVoicePanel();
-    say("引擎已卸载，显存释放");
+    sayKey("voice.unloaded");
   };
 
   $("vocabBtn").onclick = openVocab;
@@ -1240,23 +1721,35 @@ async function boot() {
   $("mergeBtn").onclick = mergeVocab;
   $("flashBtn").onclick = openFlash;
   $("flashClose").onclick = closeFlash;
+  $("flashWord").addEventListener("click", flashFlip);
+  $("flashGloss").checked = mem.get(SHOW_GLOSS_KEY, "1") === "1";
+  $("flashGloss").onchange = (e) => {
+    mem.set(SHOW_GLOSS_KEY, e.target.checked ? "1" : "0");
+    if (V.flash) paintFlash();
+  };
   loadVocab();
 
-  $("zhToggle").onclick = (e) => {
-    const on = document.body.classList.toggle("hide-zh");
-    e.target.setAttribute("aria-pressed", String(!on));
+  $("zhToggle").onclick = () => {
+    saveSettings({ show_translation: !S.settings.show_translation });   // S.settings updates synchronously
+    applyShowTranslation();
   };
-  $("themeToggle").onclick = () => {
-    const cur = document.body.dataset.theme;
-    document.body.dataset.theme = cur === "dark" ? "light" : "dark";
+  $("themeToggle").onclick = async () => {
+    const cur = document.documentElement.getAttribute("data-theme");
+    const next = cur === "light" ? "dark" : cur === "dark" ? "black" : "light";
+    applyTheme(next);
+    saveSettings({ theme: next });
+    if (window.LumenSettings) window.LumenSettings.refresh();
   };
 
-  $("speed").onchange = (e) => { S.speed = parseFloat(e.target.value); resetAudio(); };
+  $("speed").onchange = (e) => {
+    S.speed = parseFloat(e.target.value);
+    saveSettings({ tts_speed: S.speed });
+    resetAudio();
+    if (window.LumenSettings) window.LumenSettings.refresh();
+  };
   $("unit").onchange = (e) => {
-    fetch("/api/unit", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ unit: e.target.value }) })
-      .then(() => { resetAudio(); say(e.target.value === "paragraph"
-        ? "整段合成：跨句语调连贯" : "逐句合成：起播更快"); });
+    post("/api/unit", { unit: e.target.value })
+      .then(() => { resetAudio(); sayKey(e.target.value === "paragraph" ? "header.unit_paragraph_note" : "header.unit_sentence_note"); });
   };
 
   document.addEventListener("keydown", (e) => {
@@ -1268,21 +1761,26 @@ async function boot() {
     }
     if (e.target.tagName === "SELECT" || e.target.tagName === "INPUT" ||
         e.target.tagName === "TEXTAREA" || e.target.isContentEditable) return;
-    if (!$("voicePanel").hidden) {
-      if (e.key === "Escape") $("voicePanel").hidden = true;
-      return;
+    for (const id of ["voicePanel", "settingsPanel", "aboutPanel"]) {
+      if (!$(id).hidden) {
+        if (e.key === "Escape") $(id).hidden = true;
+        return;
+      }
     }
     if (!$("vocabPanel").hidden) {
       if (e.key === "Escape") $("vocabPanel").hidden = true;
       if (e.key === "Enter") openFlash();
       return;
     }
+    // The reader's arrows follow the *document* (English runs left to right
+    // whatever the UI language), so they are not mirrored; the buttons are.
     const k = e.key.toLowerCase();
     if (e.code === "Space") { e.preventDefault(); toggle(); }
     else if (e.key === "ArrowRight") { e.preventDefault(); stepSent(1); }
     else if (e.key === "ArrowLeft") { e.preventDefault(); stepSent(-1); }
     else if (k === "k") stepPara(-1);
     else if (k === "j") stepPara(1);
+    else if (k === "g") { e.preventDefault(); $("pageJump").focus(); $("pageJump").select(); }
     else if (k === "t") $("zhToggle").click();
     else if (e.key === "Escape") hidePop();
   });
@@ -1295,64 +1793,77 @@ async function boot() {
 
   // a swallowed exception used to look like a dead button
   window.addEventListener("error", (e) => {
-    say("出错了：" + (e.message || "unknown") + "（F12 控制台有详情）", 6000);
+    say(t("err.unexpected", { msg: e.message || "unknown" }), 6000);
   });
   window.addEventListener("unhandledrejection", (e) => {
     const r = e.reason;
-    say("出错了：" + ((r && r.message) || r || "unknown"), 6000);
+    say(t("err.unexpected", { msg: (r && r.message) || String(r || "unknown") }), 6000);
   });
 
   requestAnimationFrame(frame);
+  window.addEventListener("lumen:pause", () => { if (P.playing) pause(); });
+
+  const splash = $("splash");
+  splash.classList.add("done");
+  setTimeout(() => splash.remove(), 400);
+  document.dispatchEvent(new CustomEvent("lumen:ready"));
 }
+
+window.LumenApp = {
+  S, P, V, t, api, post, say, sayKey, errText, bodyError, saveSettings, setUiLang, applyTheme,
+  applyTextScale, applyConfig, applyShowTranslation, applyTargetLabels, syncMt, resetTranslations,
+  setVoice, readingVoices, resetAudio, mem, targetLang, setupHintButton, relabelAllHints,
+};
 
 boot();
 
 
 /* ---------- LLM learning features: writing practice & simplify ---------- */
-function mdLite(t) {
-  const esc = t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+function mdLite(text) {
+  const esc = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   return esc.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\n/g, "<br>");
 }
 
 async function simplifyPara(el, text, btn) {
   const old = el.querySelector(".simplified");
   if (old) { old.remove(); btn.classList.remove("on"); return; }
-  btn.disabled = true; btn.textContent = "…";
+  btn.disabled = true;
   try {
-    const r = await fetch("/api/simplify", { method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }) });
-    const d = await r.json();
+    const d = await post("/api/simplify", { text });
     const box = document.createElement("p");
-    box.className = "simplified";
-    box.textContent = d.error ? ("⚠ " + d.error) : d.text;
+    box.className = "simplified en";
+    box.lang = "en";
+    box.textContent = d.error || d.error_key ? "⚠ " + bodyError(d) : d.text;
     el.appendChild(box);
     btn.classList.add("on");
   } catch (e) {
-    status("简化失败: " + e);
-  } finally { btn.disabled = false; btn.textContent = "简"; }
+    say(t("simplify.failed", { msg: errText(e) }), 5000);
+  } finally { btn.disabled = false; }
 }
 
 (function initWriting() {
   const panel = $("writePanel");
   if (!panel) return;
-  $("writeBtn").onclick = () => { panel.hidden = !panel.hidden;
-    if (!panel.hidden) $("writeText").focus(); };
+  let lastFeedback = "";
+  $("writeBtn").onclick = () => { panel.hidden = !panel.hidden; if (!panel.hidden) $("writeText").focus(); };
   $("writeClose").onclick = () => { panel.hidden = true; };
   $("writeGo").onclick = async () => {
     const text = $("writeText").value.trim();
     const st = $("writeStatus"), out = $("writeOut");
-    st.textContent = "本地 LLM 批改中…"; out.hidden = true;
+    st.textContent = t("write.checking"); out.hidden = true;
+    $("writeHintRow").hidden = true; $("writeHint").hidden = true;
     $("writeGo").disabled = true;
     try {
-      const r = await fetch("/api/writing", { method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }) });
-      const d = await r.json();
-      if (d.error) { st.textContent = "⚠ " + d.error; return; }
-      out.innerHTML = mdLite(d.feedback);
+      const d = await post("/api/writing", { text });
+      if (d.error || d.error_key) { st.textContent = "⚠ " + bodyError(d); return; }
+      lastFeedback = d.feedback;
+      out.innerHTML = mdLite(d.feedback);       // feedback is English, shown left-to-right
       out.hidden = false; st.textContent = "";
-    } catch (e) { st.textContent = "请求失败: " + e; }
+      $("writeHintRow").hidden = false;
+      const btn = setupHintButton($("writeHintBtn"), $("writeHint"),
+        () => ({ kind: "writing", feedback: lastFeedback }));
+      if (S.settings.arabic_hints) btn.click();
+    } catch (e) { st.textContent = t("write.failed", { msg: errText(e) }); }
     finally { $("writeGo").disabled = false; }
   };
 })();

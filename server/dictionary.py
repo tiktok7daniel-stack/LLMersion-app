@@ -79,16 +79,26 @@ def base_form(word: str) -> str:
     return w
 
 
-def lookup(query: str) -> dict:
+def lookup(query: str, target: str = "") -> dict:
+    """Everything the word popup shows.
+
+    `phonetic` (IPA) and `definition` (English) come from ECDICT when it is built.
+    `gloss` is the meaning in the learner's translation language: for Arabic it is
+    produced by the Arabic MT backend (and cached), for Chinese ECDICT's own
+    Chinese entry is used. `translation` mirrors `gloss` for older callers.
+    """
+    from . import translate as mt
     q = query.strip()
     if not q:
         return {}
+    target = target if target in config.MT_TARGETS else mt.current_target()
     words = _WORD.findall(q)
     is_phrase = len(words) > 1
     head = q.lower() if not is_phrase else q
 
-    result = {"query": q, "word": q, "phonetic": "", "translation": "",
-              "definition": "", "tag": "", "source": "none", "lemma_of": ""}
+    result = {"query": q, "word": q, "phonetic": "", "translation": "", "gloss": "",
+              "target": target, "zh": "", "definition": "", "tag": "",
+              "source": "none", "lemma_of": ""}
 
     c = _conn()
     if c is not None and not is_phrase:
@@ -110,16 +120,49 @@ def lookup(query: str) -> dict:
             result.update({
                 "word": r["word"],
                 "phonetic": r["phonetic"] or "",
-                "translation": (r["translation"] or "").replace("\\n", "\n"),
+                "zh": (r["translation"] or "").replace("\\n", "\n"),
                 "definition": (r["definition"] or "").replace("\\n", "\n"),
                 "tag": r["tag"] or "",
                 "source": "ecdict",
             })
+            if target == "zh":
+                result["gloss"] = result["zh"]
+            else:
+                result["gloss"] = _gloss(result["word"], target)
+            result["translation"] = result["gloss"]
             return result
 
-    # fall back to MT for phrases / unknown words
-    from . import translate as mt
-    zh = mt.translate([q])[0]
-    result["translation"] = zh
-    result["source"] = "mt" if zh else "none"
+    # no dictionary entry (or a phrase): the translation model still gives a gloss
+    result["gloss"] = _gloss(q, target)
+    result["translation"] = result["gloss"]
+    result["source"] = "mt" if result["gloss"] else "none"
+    if not is_phrase and not result["definition"]:
+        result["definition"] = _define(q)
     return result
+
+
+def _gloss(text: str, target: str) -> str:
+    from . import translate as mt
+    try:
+        return mt.translate([text], target=target)[0]
+    except Exception:  # noqa: BLE001 — a missing backend must not break the popup
+        return ""
+
+
+def _define(word: str) -> str:
+    """One-line English definition from the tutor model, when there is no dictionary."""
+    from . import cache, llm
+    key = cache.sha1("define", word.lower())
+    hit = cache.get_trans(key)
+    if hit is not None:
+        return hit
+    if not llm.available():
+        return ""
+    try:
+        out = llm.chat(llm.prompts.load("define.en", word=word), temperature=0.1, timeout=40)
+    except Exception:  # noqa: BLE001
+        return ""
+    out = out.strip().splitlines()[0].strip() if out.strip() else ""
+    if out:
+        cache.put_trans(key, out)
+    return out

@@ -5,6 +5,11 @@ and a list of paragraphs, each `{page, kind, text}`. `kind` drives the rest of
 the app — `body` and `heading` are spoken, `other` and `toc` are shown but not.
 
 Adding a format means adding a function here and one line in `LOADERS`.
+
+PDFs go through `load_pdf`, which also covers scanned pages: a page with no text
+layer is rendered and read by Tesseract (`server/ocr.py`) when the learner has
+OCR switched on, and the result is merged back in page order. Page numbers are
+kept on every paragraph so the reader can jump to a page.
 """
 from __future__ import annotations
 
@@ -12,14 +17,18 @@ import html
 import re
 import zipfile
 from pathlib import Path
-from typing import Any, Callable
+from dataclasses import dataclass
+from typing import Any, Callable, Optional
 
-from . import pdf_parse
-from .textseg import cjk_ratio
+from . import config, ocr as ocr_mod, pdf_parse
+from .textseg import arabic_ratio, cjk_ratio
 
 # Bump on any extraction change. Documents cached by an older version are
 # re-parsed on open, so a fix reaches PDFs you have already read.
-PARSER_VERSION = 5
+PARSER_VERSION = 6
+
+ARABIC_PARAGRAPH = 0.5      # share of Arabic letters that makes a paragraph "Arabic"
+RTL_PARAGRAPH = 0.3         # ... and the share that makes it display right-to-left
 
 CHARS_PER_PAGE = 1800          # only used to give text files a page count
 
@@ -195,12 +204,78 @@ def load_epub(path: Path, filename: str) -> dict[str, Any]:
     return _finish(paras, title or Path(filename).stem)
 
 
-# ------------------------------------------------------------------ dispatch
-def load_pdf(path: Path, filename: str) -> dict[str, Any]:
-    return pdf_parse.extract(str(path))
+# ------------------------------------------------------------------ scanned PDFs
+@dataclass
+class OcrOptions:
+    """What the caller allows. `enabled=False` never runs OCR."""
+    enabled: bool = False
+    arabic: bool = False
+    progress: Optional[Callable[[int, int], None]] = None
 
 
-LOADERS: dict[str, Callable[[Path, str], dict[str, Any]]] = {
+class OCRRequired(Exception):
+    """The PDF has no usable text layer and OCR cannot (or may not) supply one.
+
+    `code` completes an i18n key: err.ocr_<code> (disabled, no_tesseract,
+    no_pytesseract, no_eng_pack).
+    """
+
+    def __init__(self, code: str, pages: list[int]):
+        super().__init__(f"scanned PDF needs OCR ({code})")
+        self.code = code
+        self.pages = pages
+
+
+def pdf_ocr_pages(path: Path) -> list[int]:
+    """0-based pages with no selectable text. Cheap: no OCR, no layout analysis."""
+    counts = pdf_parse.page_char_counts(str(path))
+    return [i for i, n in enumerate(counts) if n < config.OCR_MIN_CHARS]
+
+
+def _merge_pages(parsed: dict[str, Any], extra: list[dict]) -> None:
+    """Interleave OCR paragraphs with text-layer ones in page order."""
+    paras = sorted(parsed["paragraphs"] + extra, key=lambda p: p.get("page", 0))
+    for i, p in enumerate(paras):
+        p["id"] = i
+    parsed["paragraphs"] = paras
+
+
+def load_pdf(path: Path, filename: str,
+             ocr: Optional[OcrOptions] = None) -> dict[str, Any]:
+    parsed = pdf_parse.extract(str(path))
+    info = {"used": False, "pages": [], "skipped": [], "lang": "", "note": ""}
+    parsed["meta"]["ocr"] = info
+
+    blank = pdf_ocr_pages(path)
+    if not blank:
+        return parsed
+
+    def give_up(code: str) -> dict[str, Any]:
+        # nothing readable at all -> a clear error; a few blank pages -> read the rest
+        if not parsed["paragraphs"]:
+            raise OCRRequired(code, blank)
+        info.update(skipped=blank, note=code)
+        return parsed
+
+    if ocr is None or not ocr.enabled:
+        return give_up("disabled")
+    try:
+        lang, note = ocr_mod.choose_langs(ocr.arabic)
+    except ocr_mod.OCRUnavailable as exc:
+        return give_up(exc.code)
+
+    texts = ocr_mod.ocr_pages(str(path), blank, lang, ocr.progress)
+    extra: list[dict] = []
+    for pno in blank:
+        extra.extend(ocr_mod.paragraphs_from_text(pno, texts.get(pno, "")))
+    _merge_pages(parsed, extra)
+    info.update(used=True, pages=blank, lang=lang, note=note)
+    if not parsed["paragraphs"]:
+        raise OCRRequired("empty", blank)
+    return parsed
+
+
+LOADERS: dict[str, Callable[..., dict[str, Any]]] = {
     ".pdf": load_pdf,
     ".txt": load_text,
     ".text": load_text,
@@ -214,11 +289,30 @@ LOADERS: dict[str, Callable[[Path, str], dict[str, Any]]] = {
 EXTENSIONS = sorted(LOADERS)
 
 
-def load(path: Path, filename: str) -> dict[str, Any]:
+def annotate(parsed: dict[str, Any]) -> dict[str, Any]:
+    """Tag every paragraph with its writing direction and the document with a language.
+
+    The reader lays text out by the *document's* direction, never the UI's: an
+    English paragraph stays left-to-right in the Arabic interface, and an Arabic
+    paragraph (shown, not read aloud) is right-to-left in the English one.
+    """
+    arabic = 0
+    for p in parsed["paragraphs"]:
+        ratio = arabic_ratio(p["text"])
+        p["dir"] = "rtl" if ratio > RTL_PARAGRAPH else "ltr"
+        if ratio > ARABIC_PARAGRAPH and p.get("kind") in ("body", "heading", "other"):
+            p["kind"] = "ar"
+        arabic += p.get("kind") == "ar"
+    total = max(1, len(parsed["paragraphs"]))
+    parsed.setdefault("meta", {})["lang"] = "ar" if arabic / total > 0.5 else "en"
+    return parsed
+
+
+def load(path: Path, filename: str, ocr: Optional[OcrOptions] = None) -> dict[str, Any]:
     ext = Path(filename).suffix.lower() or path.suffix.lower()
     fn = LOADERS.get(ext)
     if fn is None:
         raise ValueError(f"unsupported file type '{ext}' — try {', '.join(EXTENSIONS)}")
-    parsed = fn(path, filename)
+    parsed = fn(path, filename, ocr) if ext == ".pdf" else fn(path, filename)
     parsed.setdefault("meta", {})["parser"] = PARSER_VERSION
-    return parsed
+    return annotate(parsed)

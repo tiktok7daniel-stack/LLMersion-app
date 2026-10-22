@@ -1,0 +1,9 @@
+You help an Arabic-speaking learner of English. Below is something their English tutor just said.
+
+TUTOR SAID:
+"{text}"
+
+Write a short hint IN ARABIC (Modern Standard Arabic, at most three sentences):
+1. Explain what the tutor means, in simple Arabic.
+2. Then name up to two English words or phrases from the line that are likely hard, each followed by its Arabic meaning in parentheses.
+Keep the English words in Latin script. Do not translate word-for-word. No markdown, no preface.

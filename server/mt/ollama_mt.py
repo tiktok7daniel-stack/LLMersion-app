@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from . import register
-from .base import MTBackend, SYS_PROMPT
+from .base import MTBackend, system_prompt
 
 
 @register
@@ -13,6 +13,7 @@ class OllamaBackend(MTBackend):
     # ollama serves several requests at once; a paragraph at a time in parallel
     # beats a serial batch by roughly the same factor
     parallel = 4
+    targets = ("zh", "ar")
     notes = "install ollama, then `ollama pull <model>`"
 
     @classmethod
@@ -40,7 +41,7 @@ class OllamaBackend(MTBackend):
         except Exception:  # noqa: BLE001
             return []
 
-    def translate(self, texts: list[str], model: str) -> list[str]:
+    def translate(self, texts: list[str], model: str, target: str = "zh") -> list[str]:
         import requests
         from .. import config
         out = []
@@ -50,7 +51,7 @@ class OllamaBackend(MTBackend):
                 json={"model": model, "stream": False,
                       "options": {"temperature": 0.2, "num_ctx": 2048,
                                   "num_predict": 1024},
-                      "messages": [{"role": "system", "content": SYS_PROMPT},
+                      "messages": [{"role": "system", "content": system_prompt(target)},
                                    {"role": "user", "content": t}]},
                 timeout=180)
             r.raise_for_status()

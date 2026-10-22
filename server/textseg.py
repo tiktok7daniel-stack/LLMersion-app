@@ -21,6 +21,18 @@ _CJK = re.compile(
 )
 
 
+# Arabic script: base block, supplement, extended-A, presentation forms A and B
+_ARABIC = re.compile(r"[\u0600-\u06ff\u0750-\u077f\u08a0-\u08ff\ufb50-\ufdff\ufe70-\ufeff]")
+
+
+def arabic_ratio(text: str) -> float:
+    """Share of letters (non-space characters) that are Arabic script."""
+    body = [c for c in text if not c.isspace()]
+    if not body:
+        return 0.0
+    return sum(bool(_ARABIC.match(c)) for c in body) / len(body)
+
+
 def cjk_ratio(text: str) -> float:
     """Share of non-space characters that are CJK."""
     body = [c for c in text if not c.isspace()]
@@ -30,9 +42,9 @@ def cjk_ratio(text: str) -> float:
 
 
 def strip_cjk(text: str) -> str:
-    """Remove CJK before synthesis: an English voice cannot say it, and what it
-    does instead is worse than silence."""
-    return re.sub(r"\s{2,}", " ", _CJK.sub(" ", text)).strip()
+    """Remove CJK and Arabic script before synthesis: an English voice cannot say
+    them, and what it does instead is worse than silence."""
+    return re.sub(r"\s{2,}", " ", _ARABIC.sub(" ", _CJK.sub(" ", text))).strip()
 
 _ABBR = {
     "mr", "mrs", "ms", "dr", "prof", "sr", "jr", "st", "vs", "etc", "fig", "eq",

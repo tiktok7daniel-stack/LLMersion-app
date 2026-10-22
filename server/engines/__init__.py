@@ -85,7 +85,8 @@ class Manager:
     def default_voice(self) -> Voice | None:
         wanted_engine = config.TTS_ENGINE
         wanted_voice = config.TTS_VOICE
-        vs = self.voices()
+        # the reader speaks English; an Arabic voice is never an automatic default
+        vs = [v for v in self.voices() if v.lang == "en"]
         if not vs:
             return None
         if wanted_voice:

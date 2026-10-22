@@ -1,0 +1,5 @@
+# Test suite:  pip install -r requirements/core.txt -r requirements/ocr.txt -r requirements/dev.txt
+pytest>=8
+httpx>=0.27
+playwright>=1.45      # browser acceptance tests; `python -m playwright install chromium`
+cairosvg>=2.7         # only for tools/build_brand.py

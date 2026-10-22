@@ -1,0 +1,6 @@
+You help an Arabic-speaking learner of English with pronunciation. The learner tried to say the word "{word}".
+
+The scorer compared their sounds with the target. Each item is TARGET sound -> sound HEARD (IPA):
+{problems}
+
+Write a short, practical hint IN ARABIC (Modern Standard Arabic, at most three sentences). For each mismatch say how to place the tongue, lips or voice. Where an Arabic sound is a useful reference, name it (for example: ث for /θ/). Many Arabic speakers merge /p/ with /b/ and confuse short vowels; mention that only when it applies. Keep IPA symbols and English words in Latin script. No markdown, no preface.

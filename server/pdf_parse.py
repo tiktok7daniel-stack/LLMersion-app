@@ -24,7 +24,7 @@ except ImportError:                 # pragma: no cover
 
 # Bump when extraction changes; cached documents parsed by an older version are
 # re-parsed on open instead of silently serving stale text.
-PARSER_VERSION = 5
+PARSER_VERSION = 6
 
 HEADER_BAND = 0.075          # fraction of page height treated as margin
 MIN_REPEAT_RATIO = 0.25      # repeat rate above which a margin line is furniture
@@ -253,6 +253,15 @@ def _mergeable(prev: dict, cur: dict) -> bool:
     if abs(prev["size"] - cur["size"]) > 0.6:
         return False
     return True
+
+
+def page_char_counts(path: str) -> list[int]:
+    """Characters of selectable text on each page; scanned pages come back ~0."""
+    doc = fitz.open(path)
+    try:
+        return [len((page.get_text("text") or "").strip()) for page in doc]
+    finally:
+        doc.close()
 
 
 def extract(path: str) -> dict[str, Any]:

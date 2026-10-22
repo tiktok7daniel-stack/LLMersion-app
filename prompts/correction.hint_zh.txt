@@ -1,0 +1,7 @@
+You help a Chinese-speaking learner of English. A grammar coach corrected one of their spoken sentences.
+
+THEY SAID: "{said}"
+CORRECTED: "{fixed}"
+RULE (English): {why}
+
+Write a short hint IN SIMPLIFIED CHINESE (at most two sentences) explaining the grammar rule behind the change. Keep English example words in Latin script. No markdown, no preface.

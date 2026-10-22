@@ -48,7 +48,7 @@ class HFBackend(MTBackend):
             self._cache = {model: (tok, mdl, dev)}   # keep only the current one
         return self._cache[model]
 
-    def translate(self, texts: list[str], model: str) -> list[str]:
+    def translate(self, texts: list[str], model: str, target: str = "zh") -> list[str]:
         import torch
         from ..textseg import split_sentences
         tok, mdl, dev = self._pair(model)

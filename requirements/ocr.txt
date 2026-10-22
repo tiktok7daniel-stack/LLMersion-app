@@ -1,0 +1,9 @@
+# Optional OCR for scanned PDFs.
+#   pip install -r requirements/ocr.txt
+# The Tesseract program and its language packs are a separate install (not pip):
+#   Windows  https://github.com/UB-Mannheim/tesseract/wiki  (tick "Arabic" under Additional language data)
+#   macOS    brew install tesseract tesseract-lang
+#   Linux    sudo apt install tesseract-ocr tesseract-ocr-eng tesseract-ocr-ara
+# See docs/INSTALL.md. Without it the app still works; scanned PDFs just cannot be read.
+pytesseract>=0.3.10
+pillow>=10.0

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tagline">اقرأ. استمع. تحدث. افهم.</string>
+    <string name="connect_title">اتصل بخادم LumenRead الخاص بك</string>
+    <string name="connect_body">يشغّل LumenRead نماذجه على حاسوبك أنت. شغّل الخادم هناك ثم اكتب عنوانه هنا. لا يُرسَل أي شيء إلى جهة أخرى.</string>
+    <string name="server_hint">عنوان الخادم، مثلًا http://192.168.1.20:8848</string>
+    <string name="token_hint">رمز الوصول (فقط إذا ضبطت PR_TOKEN)</string>
+    <string name="connect">اتصال</string>
+    <string name="change_server">تغيير الخادم</string>
+    <string name="bad_url">اكتب عنوانًا يبدأ بـ http:// أو https://</string>
+    <string name="load_failed">تعذّر الوصول إلى الخادم. تأكد من أنه يعمل وأن الهاتف على الشبكة نفسها.</string>
+    <string name="retry">حاول مرة أخرى</string>
+    <string name="mic_needs_secure">يعمل الميكروفون فقط على https:// أو http://localhost. راجع README لمعرفة طريقة الإعداد.</string>
+</resources>

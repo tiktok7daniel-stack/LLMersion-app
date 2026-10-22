@@ -1,177 +1,163 @@
-# LLMersion-1
+<p align="center"><img src="web/brand/logo-192.png" width="96" alt="LumenRead logo"></p>
 
-> **Status: newly launched (August 2026). This project is under active, continuous development; interfaces and documentation will keep evolving.**
+# LumenRead
 
-**A teacher's voice, for everyone, on the machine you already own.**
+**Read. Listen. Speak. Understand.** · اقرأ. استمع. تحدث. افهم.
 
-Many people learn to read English yet cannot speak it, because solitary
-reading severs the sounds of a language from its text. In natural
-acquisition a person supplies the missing link: a teacher who reads the
-text aloud, discusses it with you, listens to you speak, and corrects what
-you write. That provision has always been rationed by cost. LLMersion-1
-performs those four roles for any document you choose, entirely on your
-own computer, offline after a one-time model download, for roughly the
-cost of electricity.
+*Learn English by listening, speaking, and reading.* · *تعلّم الإنجليزية بالاستماع والتحدث والقراءة.*
 
-LLMersion-1 is the open-source reference implementation of the
-**LLMersion scheme** described in the accompanying paper:
+LumenRead is a local-first English-learning app with a fully bilingual interface (English and
+Arabic, with right-to-left layout) and built-in English→Arabic translation as a learning aid.
+Open any English document, hear it read slowly with the spoken sentence highlighted, tap a word for
+its IPA, definition and Arabic meaning, practise speaking with a tutor, and write a retelling that is
+corrected in English with optional Arabic hints. Everything runs on your own computer; after the
+one-time model download nothing is sent anywhere. It ships as a **web interface served locally** and
+as an **Android app** (a native shell, see [Android](#android-app)).
 
-> [*LLMersion: A Local-First AI Agent Framework for Low-Cost Home Language
-> Learning toward Educational Equity*](https://arxiv.org/abs/2609.29672)
-> (arXiv:2609.29672)
+> **Upstream.** LumenRead is a fork of [LLMersion-1](https://github.com/QM378/LLMersion), the
+> reference implementation of the LLMersion scheme (paper below). Code is MIT; the original copyright
+> notice is kept in `LICENSE`. See `NOTICE.md`.
 
-The scheme rests on four principles, and this codebase implements all of
-them: (P1) a web interface backed entirely by local, free, open-weight
-models chosen for minimum hardware demand; (P2) the complete
-listening-reading-speaking-writing loop, played in the teacher's order;
-(P3) your own documents and your self-built vocabulary as first-class
-input, not a fixed curriculum; (P4) a codebase that is AI-written,
-AI-understood, and AI-updated, so customization is a conversation with a
-model rather than a contract with a vendor.
-
-## What it does
-
-**Listen and read.** Any PDF, EPUB, HTML, Markdown, or text file becomes a
-synchronized read-along session: whole paragraphs are synthesized so the
-voice carries natural cross-sentence intonation, a highlighter tracks the
-spoken sentence, and a parallel Chinese rendering appears beneath each
-paragraph. Tap any word to hear it, see IPA and bilingual glosses, and
-file it into a self-building vocabulary with flashcard review.
-
-**Speak.** A conversation module closes the rarest loop: someone to talk
-to about what you read. Sessions start from free talk, a chosen topic, or
-the document currently open. Hold a key to speak; your words appear as you
-say them; the tutor replies in the same voice as the reader with
-sentence-synchronized captions. Each turn also returns, in parallel, a
-grammar-correction card with a one-sentence rule explanation in Chinese
-and segmental pronunciation feedback that folds accent-level allophone
-differences so they are not scored as errors. Stored vocabulary lights up
-as the tutor uses it and again when you say it yourself.
-
-**Write.** Retell what you studied in a writing panel; the local model
-returns a corrected version with changes marked, notes on the most
-instructive errors, and a check of which saved words you used.
-
-**Stay supplied.** An optional night curator fetches fresh material on
-topics you rate well, ranks candidates partly by how densely they
-re-encounter your saved vocabulary, rewrites them for read-aloud delivery,
-and leaves ordinary Markdown files for the reader to pick up. It is
-strictly decoupled: deleting it removes a convenience, never a capability.
-
-## Screenshots
-
-The reader with a document open: the spoken sentence is highlighted as the
-voice reads, and the Chinese rendering of the paragraph appears beneath it.
-The toolbar holds the voice, speed, reading mode, translation, vocabulary,
-writing, and conversation controls.
-
-![LLMersion-1 reader, read-along with paragraph translation](docs/images/llmersion/read-along.png)
-
-The voice and model panel lists every TTS engine with its install status,
-lets you compare voices on the same sentence, and frees GPU memory on demand.
-
-![LLMersion-1 voice and model panel](docs/images/llmersion/voices.png)
-
-| Conversation | Writing |
+| English interface | Arabic interface (RTL), Arabic translation under each paragraph |
 |---|---|
-| ![LLMersion-1 conversation module, choosing a starting point](docs/images/llmersion/talk.png) | ![LLMersion-1 writing panel](docs/images/llmersion/writing.png) |
+| ![English reader](docs/images/lumenread/reader-en.png) | ![Arabic reader](docs/images/lumenread/reader-ar-rtl.png) |
 
-The conversation module starts from free talk, a chosen topic, or the open
-document, and shows the saved words the tutor will try to use. The writing
-panel takes a retelling of what you just read and returns local LLM feedback,
-including a check of which saved words you used.
+| Word tap: IPA, definition, Arabic gloss | Flashcard in the Arabic UI |
+|---|---|
+| ![Word tap](docs/images/lumenread/word-tap.png) | ![Flashcard](docs/images/lumenread/flashcard-ar.png) |
 
-## Quick start
+## Features
 
-Two commands on any platform. The first run downloads models (a few GB);
-after that, no network is needed.
+- **Bilingual UI** — `web/i18n/en.json` and `ar.json` hold every visible string (a test fails if a key
+  is missing in either). Language: System / English / العربية, in the header and in Settings, saved
+  across sessions. `<html dir lang>` is set by one layout controller, CSS uses logical properties
+  only, directional icons mirror, and **document text keeps its own direction**: English stays LTR
+  inside the Arabic UI.
+- **Translation aid, independent of the UI language** — Arabic (default) or Chinese under each
+  paragraph, toggle per session. `opus-mt-en-ar` by default; NLLB or any Ollama model selectable.
+- **Listening and reading** — speed 0.5×–1.5× (default 0.8×), sentence highlighting synced with the
+  voice, tap any word for sound + IPA + English definition + Arabic gloss, saved to a vocabulary with
+  spaced-repetition flashcards (English front, optional Arabic back).
+- **PDF import** — file picker or drag-and-drop, per-page extraction with page numbers and
+  jump-to-page, optional OCR for scanned PDFs (Tesseract `eng`, optionally `ara`) with progress and
+  graceful fallback; extracted text and translations are cached per document hash.
+- **Speaking** — free talk, a topic, or the open document. The tutor speaks English; grammar cards give
+  a one-sentence English rule; pronunciation feedback is shown with the sounds that differ. Each card
+  has an opt-in **Show Arabic hint** button.
+- **Writing** — corrected English with changes marked, errors explained in English, vocabulary check,
+  optional Arabic hint for the top errors.
+- **Privacy** — no account, no telemetry, no external CDN (fonts are bundled). The optional curator is
+  off by default.
+
+## Install and run
+
+Requires Python 3.10+. First run downloads models (a few GB).
 
 **Windows**
-```
+```bat
 setup-windows.bat
 start-windows.bat
 ```
-
 **macOS**
-```
+```bash
 ./setup-mac.command
 ./start-mac.command
 ```
+**Linux**
+```bash
+python3 -m venv .venv && . .venv/bin/activate
+pip install torch                                   # or the CUDA build, see docs/INSTALL.md
+pip install -r requirements/core.txt -r requirements/voice.txt -r requirements/translate.txt -r requirements/ocr.txt
+sudo apt install tesseract-ocr tesseract-ocr-eng tesseract-ocr-ara   # optional: scanned PDFs
+python -m server.main
+```
+Open the printed address (default `http://127.0.0.1:8848`). Try it with no models at all:
+`PR_DEV=1 python -m server.main` (tone-generator voice).
 
-**Linux**: see `docs/INSTALL.md`.
+### Test
+```bash
+pip install -r requirements/core.txt -r requirements/ocr.txt -r requirements/dev.txt
+python -m playwright install chromium     # browser acceptance tests (optional)
+python -m pytest tests -q                 # all platforms
+node --test tests/js/layout.test.mjs      # JS unit tests alone
+```
+On Windows use `py -m pytest tests -q`. If Playwright's Chromium is not installed, the browser tests
+look for `LUMEN_CHROMIUM` or a system Chromium and are skipped otherwise.
 
-Then open the printed local address in your browser. Your data (library,
-vocabulary, progress) lives in a per-user data directory and survives
-updates; for backward compatibility this directory is still named
-`ReadingDesk` on existing installs.
+## Android app
 
-## Hardware requirements
+`android/` is a native Android app (Java, `WebView`, no third-party dependencies). The models are too
+large to run inside a phone app, so the app is the **front end for your own LumenRead server**: start
+the server on your computer (`PR_HOST=0.0.0.0 PR_TOKEN=secret python -m server.main`), enter its
+address in the app once, and use LumenRead on the phone: microphone, PDF picker, Arabic RTL and all.
 
-The design target is the cheapest hardware households actually have. CPU
-only is fine; a GPU is used when present but never required.
+- Build: open `android/` in Android Studio, or `cd android && gradle assembleDebug`; CI builds it in
+  `.github/workflows/android.yml` and uploads the APK.
+- Microphone: Android only allows the microphone on `https://` or `http://localhost`. Use
+  `adb reverse tcp:8848 tcp:8848` and the address `http://localhost:8848`, or put the server behind
+  HTTPS. Reading, translation, vocabulary and writing work over plain `http://` on your network.
+- **Status:** the project and its Java source were written but **not compiled or run** in the
+  environment this fork was prepared in (no Android SDK was reachable). Expect to fix small build
+  issues on first build.
 
-| Tier | Memory | Experience |
-|---|---|---|
-| Floor | 8 GB | 1B tutor; full four-skill loop; scorer loads on demand |
-| Comfortable | 16 GB | 3B tutor resident alongside everything else |
-| Workstation | 24 GB+ | optional larger local tutors (4B-27B) |
+## Configuration
 
-The complete default stack (tutor LLM, voice, ear, translation) occupies
-under 4 GB of memory; the worst case with the pronunciation scorer
-resident is about 5 GB. See the paper's feasibility and deployment
-sections for the full arithmetic.
+Environment variables (all optional):
 
-## Models and licenses
+| Variable | Meaning |
+|---|---|
+| `PR_MT_MODEL_AR`, `PR_MT_BACKEND_AR` | Arabic translation model / backend (default `Helsinki-NLP/opus-mt-en-ar`) |
+| `PR_MT_MODEL_ZH`, `PR_MT_BACKEND_ZH` | Chinese equivalents (`opus-mt-en-zh` stays available) |
+| `PR_TTS_SPEED` | default reading speed (0.8) |
+| `PR_TESSERACT`, `PR_OCR_DPI` | Tesseract binary path, OCR resolution |
+| `PR_PIPER_AR_DIR` | folder for optional Arabic Piper voices |
+| `PR_HOST`, `PR_PORT`, `PR_TOKEN` | serving; set a token when binding beyond localhost |
+| `PR_DATA` | data directory (existing `ReadingDesk` installs keep their data) |
 
-All models are free and open-weight, and every category is a plug-in
-registry, so each component can be replaced by editing one small file.
-Licenses below are as published on the upstream model cards; verify
-before redistributing weights.
+User settings (UI language, theme, translation target, speed, OCR) are in `settings.json` in the data
+directory and in the Settings panel.
 
-| Role | Default model | Params | License (per model card) |
-|---|---|---|---|
-| Tutor | Llama 3.2 / Qwen (via Ollama) | 1-4B | Llama 3.2 Community License / Apache-2.0 |
-| Voice | Kokoro | 82M | Apache-2.0 |
-| Ear | Whisper (faster-whisper) | 74-244M | MIT |
-| Translation | opus-mt-en-zh | 77M | CC-BY-4.0 |
-| Pronunciation | wav2vec2 phoneme CTC | 0.3B | see model card |
-
-Pedagogical behavior (tutor persona, correction policy, curator rewriting
-style) lives in editable prompt files, not compiled logic. Voices,
-recognizers, translators, dictionaries, and document loaders are plug-in
-folders with one declared interface each: this is principle P4 in
-practice, and it is also how this codebase was built and is maintained.
-
-## Privacy
-
-Everything runs locally. No account, no telemetry, no audio or text ever
-leaves your machine. The optional curator touches the network only to
-fetch public articles you asked it to look for.
-
-## Repository layout
+## Architecture
 
 ```
-server/     reader, conversation, writing (FastAPI + vanilla JS)
-talk/       conversation module (merges into the reader at startup)
-curator/    optional night agent (separate process, own database)
-web/        reader interface
-docs/       INSTALL, DEPLOY, voices, research notes
-tools/      document distiller, benchmark harnesses
+server/        FastAPI: routes, settings, cache (SQLite), loaders (PDF/OCR), hints, prompts
+  mt/          translation plugins: ollama, hf (zh), opus_ar (Arabic)   — one file each
+  engines/     TTS plugins: kokoro, piper, piper_ar (optional Arabic), edge, dev …
+talk/          conversation module (tutor, coach, scoring)
+prompts/       every model prompt as a text file; *.hint_ar.txt / *.hint_zh.txt are the hint variants
+web/           index.html, style.css (logical properties), app.js, js/{layout,i18n,header,flashcards,settings}.js
+web/i18n/      en.json, ar.json       web/brand/  logo, favicon, icons       web/fonts/  bundled fonts
+android/       WebView shell app
+tests/         pytest + node + Playwright acceptance
 ```
+Everything new is a plugin, a config entry, a prompt file or an i18n resource; the upstream plugin
+architecture is unchanged and Chinese remains supported (`translation target = Chinese`).
 
-## Evaluation status, honestly
+## Known limitations
 
-This release claims no learning outcomes. The repository ships a designed
-but not yet administered 24-item self-report instrument (see the paper's
-appendix) with pre-stated expectations, and the system logs objective
-traces locally (reading throughput, pronunciation trajectories, vocabulary
-growth) that a future study will pair with it. The prototype is under
-active development; as feedback accumulates we will upgrade it and report
-findings of value.
+- Word glosses for single words come from machine translation of the bare word, so ambiguous words
+  can be wrong; the IPA and the English definition need the optional ECDICT dictionary
+  (`tools/build_ecdict.py`), otherwise only the gloss (and an LLM-written definition when Ollama runs).
+- opus-mt-en-ar is a small model: fine for study, not publication quality. NLLB is better but
+  CC-BY-NC.
+- The tutor, corrections, writing feedback and Arabic hints need Ollama; without it those buttons
+  explain that.
+- The reader is English-first: Arabic documents are shown (RTL) but not read aloud unless you add an
+  Arabic voice plugin; Arabic voices are not used for the English reading.
+- Scanned-PDF OCR quality depends on the scan. Mixed Arabic/English pages need the `ara` pack.
+- Numerals are Latin digits in both languages by design.
+- Reader keyboard shortcuts (←/→) follow the English text and are not mirrored; flashcard navigation
+  keys are mirrored.
+- The Android app needs a running server and was not built in this environment (see above).
+
+Extension points: add a UI language by adding `web/i18n/<code>.json` (the parity test checks it) and
+listing it in `layout.js`/`i18n.js`; add a translator in `server/mt/`, a voice in `server/engines/`, a
+document format in `server/loaders.py`, or a prompt in `prompts/`. See `docs/MODELS.md` and
+`docs/INSTALL.md`.
 
 ## Citing
 
-If you use LLMersion-1 or LLMersion Narrator, please cite the paper:
+If you use LumenRead, please cite the LLMersion paper it is built on:
 
 ```bibtex
 @article{guo2026llmersion,
@@ -184,28 +170,5 @@ If you use LLMersion-1 or LLMersion Narrator, please cite the paper:
 
 ## License
 
-MIT (code). Model weights carry their own licenses; see the table above.
-
-## Companion project: LLMersion Narrator
-
-[LLMersion Narrator](https://github.com/QM378/llmersion-narrator) is an
-additional build that comes with the paper. It takes the listening part of
-LLMersion-1 (paragraph-level synthesis, sentence timing recovered from the
-voice's own pauses, and the read-along highlight) and turns it into a
-standalone tool whose results you can keep: paste English text, open a file,
-or open a whole folder, and get a narrated MP3, a read-along MP4 and a PDF
-for each, optionally repeated up to 20 times. It runs locally, and a Windows
-EXE that needs no Python is available on its
-[releases page](https://github.com/QM378/llmersion-narrator/releases).
-
-The Narrator page, with the paste, file and folder modes:
-
-![LLMersion Narrator, Paste text tab](docs/images/narrator/paste-text.png)
-
-| Open a file | Open a folder |
-|---|---|
-| ![LLMersion Narrator, Open a file tab](docs/images/narrator/open-file.png) | ![LLMersion Narrator, Open a folder tab](docs/images/narrator/open-folder.png) |
-
-A frame of the MP4 it produces (light style), with the spoken sentence highlighted:
-
-![A frame of a Narrator read-along video](docs/images/narrator/video-light.png)
+MIT (code), including the upstream LLMersion notice. Model weights and fonts keep their own licenses:
+see `docs/MODELS.md`.

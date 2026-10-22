@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# LLMersion-1 — one-time setup for macOS and Linux.
+# LumenRead — one-time setup for macOS and Linux.
 # Finds conda (or falls back to venv), builds the environment, installs the
 # right PyTorch for this machine, then the reader and its default models.
 set -euo pipefail
@@ -9,7 +9,7 @@ say() { printf '  %s\n' "$*"; }
 die() { printf '\n  %s\n\n' "$*" >&2; exit 1; }
 
 echo
-say "LLMersion-1 setup"
+say "LumenRead setup"
 say "------------------------------------------------------------"
 
 [ -f server/main.py ] || die "Wrong folder: $PWD has no server/main.py"
@@ -72,6 +72,12 @@ say "installing Kokoro (the voice) ..."
 pip install -r requirements/voice.txt --quiet
 say "installing the small translation model and pronunciation scoring ..."
 pip install -r requirements/translate.txt --quiet
+# optional OCR for scanned PDFs (pytesseract here; the Tesseract program is a separate install)
+pip install -r requirements/ocr.txt --quiet || say "pytesseract not installed — scanned PDFs will not be readable"
+if ! command -v tesseract >/dev/null 2>&1; then
+  say "note: for scanned PDFs install Tesseract with English and Arabic data:"
+  say "      macOS: brew install tesseract tesseract-lang   Linux: sudo apt install tesseract-ocr tesseract-ocr-eng tesseract-ocr-ara"
+fi
 # optional: ~5x faster sentence splitting, no arm64 macOS wheel exists
 pip install blingfire --quiet 2>/dev/null || say "blingfire unavailable — using the built-in splitter"
 
@@ -103,9 +109,9 @@ print("  kernel     ok")
 EOF
 python -c "import fitz, fastapi, soundfile; print('  reader     ok')"
 python -c "import kokoro; print('  kokoro     ok')"
-python -c "import transformers; print('  translate  ok (opus-mt, downloads on first use)')"
+python -c "import transformers; print('  translate  ok (opus-mt en-ar / en-zh, downloads on first use)')"
 say "------------------------------------------------------------"
 echo
 say "Done. Run ./start-mac.command to launch it."
-say "For better Chinese, see docs/INSTALL.md for Ollama."
+say "For the tutor, hints and better translation, see docs/INSTALL.md for Ollama."
 echo

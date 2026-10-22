@@ -1,0 +1,1 @@
+Open the conversation with one question about the topic. Same rules, same one-line output.

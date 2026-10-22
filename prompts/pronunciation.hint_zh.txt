@@ -1,0 +1,6 @@
+You help a Chinese-speaking learner of English with pronunciation. The learner tried to say the word "{word}".
+
+The scorer compared their sounds with the target. Each item is TARGET sound -> sound HEARD (IPA):
+{problems}
+
+Write a short, practical hint IN SIMPLIFIED CHINESE (at most three sentences). For each mismatch say how to place the tongue, lips or voice. Keep IPA symbols and English words in Latin script. No markdown, no preface.

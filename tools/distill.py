@@ -114,7 +114,7 @@ def main() -> int:
 
     out = Path(args.output)
     out.write_text("\n".join(lines), encoding="utf-8")
-    print(f"wrote {out} — open it in LLMersion-1 like any document")
+    print(f"wrote {out} — open it in LumenRead like any document")
     return 0
 
 

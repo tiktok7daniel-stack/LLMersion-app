@@ -56,7 +56,9 @@ CREATE TABLE IF NOT EXISTS vocab (
 # columns added after the first release; applied to existing databases on open
 MIGRATIONS = {
     "vocab": {"hits": "INTEGER DEFAULT 1", "known": "INTEGER DEFAULT 0", "last": "REAL",
-              "best": "INTEGER DEFAULT 0", "tries": "INTEGER DEFAULT 0"},
+              "best": "INTEGER DEFAULT 0", "tries": "INTEGER DEFAULT 0",
+              "ar": "TEXT",        # Arabic gloss; `zh` keeps the Chinese one
+              "box": "INTEGER DEFAULT 0", "due": "REAL DEFAULT 0"},   # spaced repetition
     "audio": {"marks": "TEXT", "method": "TEXT"},
 }
 
@@ -148,6 +150,37 @@ def put_trans(key: str, zh: str) -> None:
     conn().commit()
 
 
+def clear_trans() -> int:
+    """Forget every cached translation. Returns the number of rows removed."""
+    c = conn()
+    n = c.execute("SELECT COUNT(*) n FROM trans").fetchone()["n"]
+    c.execute("DELETE FROM trans")
+    c.commit()
+    return n
+
+
+def clear_docs() -> dict:
+    """Forget extracted documents and the copies of the uploaded files.
+
+    Reading positions go with them (they point into documents that no longer
+    exist). Vocabulary, settings and the audio cache are untouched.
+    """
+    c = conn()
+    n = c.execute("SELECT COUNT(*) n FROM doc").fetchone()["n"]
+    c.execute("DELETE FROM doc")
+    c.execute("DELETE FROM progress")
+    c.commit()
+    files = 0
+    for f in config.DOCS_DIR.glob("*"):
+        if f.is_file():
+            try:
+                f.unlink()
+                files += 1
+            except OSError:
+                pass
+    return {"docs": n, "files": files}
+
+
 # ---------------------------------------------------------------- progress / vocab
 def set_progress(doc_id: str, para: int, sent: int) -> None:
     conn().execute("INSERT OR REPLACE INTO progress VALUES (?,?,?,?)",
@@ -160,25 +193,52 @@ def get_progress(doc_id: str) -> dict[str, Any]:
     return {"para": r["para"], "sent": r["sent"]} if r else {"para": 0, "sent": 0}
 
 
-def add_vocab(word: str, zh: str, phonetic: str, context: str, doc_id: str) -> None:
+def add_vocab(word: str, zh: str, phonetic: str, context: str, doc_id: str,
+              ar: str = "") -> None:
     """Insert, or bump the hit count if the word is already on the list."""
     now = time.time()
     conn().execute(
         """
-        INSERT INTO vocab (word, zh, phonetic, context, doc_id, ts, hits, known, last)
-        VALUES (?,?,?,?,?,?,1,0,?)
+        INSERT INTO vocab (word, zh, phonetic, context, doc_id, ts, hits, known, last, ar)
+        VALUES (?,?,?,?,?,?,1,0,?,?)
         ON CONFLICT(word) DO UPDATE SET
             hits = hits + 1,
             last = excluded.last,
             zh       = CASE WHEN vocab.zh IS NULL OR vocab.zh = ''
                             THEN excluded.zh ELSE vocab.zh END,
+            ar       = CASE WHEN vocab.ar IS NULL OR vocab.ar = ''
+                            THEN excluded.ar ELSE vocab.ar END,
             phonetic = CASE WHEN vocab.phonetic IS NULL OR vocab.phonetic = ''
                             THEN excluded.phonetic ELSE vocab.phonetic END,
             context  = CASE WHEN vocab.context IS NULL OR vocab.context = ''
                             THEN excluded.context ELSE vocab.context END
         """,
-        (word.strip().lower(), zh, phonetic, context, doc_id, now, now),
+        (word.strip().lower(), zh, phonetic, context, doc_id, now, now, ar),
     )
+    conn().commit()
+
+
+def review_vocab(word: str, grade: int) -> dict:
+    """Record a flashcard review and schedule the next one (see server/srs.py)."""
+    from . import srs
+    w = word.strip().lower()
+    r = conn().execute("SELECT box FROM vocab WHERE word=?", (w,)).fetchone()
+    if not r:
+        return {"ok": False}
+    now = time.time()
+    box, due = srs.next_state(r["box"] or 0, grade, now)
+    conn().execute("UPDATE vocab SET box=?, due=?, last=? WHERE word=?", (box, due, now, w))
+    conn().commit()
+    return {"ok": True, "box": box, "due": due}
+
+
+def set_gloss(word: str, lang: str, gloss: str) -> None:
+    """Fill in a gloss that was missing when the word was saved."""
+    col = {"ar": "ar", "zh": "zh"}.get(lang)
+    if not col or not gloss:
+        return
+    conn().execute(f"UPDATE vocab SET {col}=? WHERE word=? AND ({col} IS NULL OR {col}='')",
+                   (gloss, word.strip().lower()))
     conn().commit()
 
 
@@ -232,6 +292,7 @@ def merge_vocab(base_of) -> dict:
         merged = {
             "word": base,
             "zh": next((r["zh"] for r in items if r["zh"]), ""),
+            "ar": next((r.get("ar") for r in items if r.get("ar")), ""),
             "phonetic": next((r["phonetic"] for r in items if r["phonetic"]), ""),
             "context": next((r["context"] for r in items if r["context"]), ""),
             "doc_id": next((r["doc_id"] for r in items if r["doc_id"]), ""),
@@ -239,14 +300,16 @@ def merge_vocab(base_of) -> dict:
             "hits": sum(r["hits"] or 1 for r in items),
             "known": max(r["known"] or 0 for r in items),
             "last": max((r["last"] or r["ts"] or 0) for r in items),
+            "box": max((r.get("box") or 0) for r in items),
+            "due": min((r.get("due") or 0) for r in items),
         }
         for r in items:
             c.execute("DELETE FROM vocab WHERE word=?", (r["word"],))
         removed += len(items) - 1
         changed += 1
         c.execute(
-            "INSERT OR REPLACE INTO vocab (word,zh,phonetic,context,doc_id,ts,hits,known,last)"
-            " VALUES (:word,:zh,:phonetic,:context,:doc_id,:ts,:hits,:known,:last)",
+            "INSERT OR REPLACE INTO vocab (word,zh,ar,phonetic,context,doc_id,ts,hits,known,last,box,due)"
+            " VALUES (:word,:zh,:ar,:phonetic,:context,:doc_id,:ts,:hits,:known,:last,:box,:due)",
             merged,
         )
     c.commit()

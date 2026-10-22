@@ -1,0 +1,1 @@
+Open the conversation: one sentence naming what the passage is about, then one question about it. Same rules, same one-line output.

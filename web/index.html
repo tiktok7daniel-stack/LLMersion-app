@@ -1,224 +1,322 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LLMersion-1 · PDF 跟读</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@300;400&display=swap" rel="stylesheet">
+<meta name="theme-color" content="#1D4ED8">
+<meta name="color-scheme" content="light dark">
+<title>LumenRead</title>
+<link rel="icon" href="/brand/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" href="/brand/logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/brand/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="/fonts/fonts.css">
 <link rel="stylesheet" href="/style.css">
+<!-- sets <html dir lang data-theme> from the saved preference before first paint -->
+<script src="/js/layout.js"></script>
 </head>
-<body data-theme="light">
+<body>
 
-<header class="bar">
-  <div class="bar-left">
-    <span class="mark" aria-hidden="true"></span>
-    <h1 id="docTitle">LLMersion-1</h1>
-  </div>
-  <div class="bar-right">
-    <label class="file">
-      <input type="file" id="fileInput" accept=".pdf,.txt,.md,.markdown,.html,.htm,.epub" hidden>
-      打开文件
-    </label>
-    <button id="voiceBtn" class="ghost">语音 <span id="voiceNow" class="pill pill-wide">—</span></button>
-    <select id="speed" title="语速">
-      <option value="0.8">0.8×</option>
-      <option value="0.9">0.9×</option>
-      <option value="1" selected>1.0×</option>
-      <option value="1.1">1.1×</option>
-      <option value="1.25">1.25×</option>
-      <option value="1.5">1.5×</option>
-    </select>
-    <select id="unit" title="合成粒度">
-      <option value="paragraph">整段朗读</option>
-      <option value="sentence">逐句朗读</option>
-    </select>
-    <button id="zhToggle" class="ghost" aria-pressed="true">中文</button>
-    <button id="vocabBtn" class="ghost">生词本 <span id="vocabCount" class="pill">0</span></button>
-    <button id="writeBtn" class="ghost">写作</button>
-    <button id="talkBtn" class="ghost" hidden>对话</button>
-    <button id="themeToggle" class="ghost" title="切换主题">◐</button>
-  </div>
-</header>
+<!-- splash: shown until the language files and the first config call are in -->
+<div id="splash" class="splash" role="status" aria-live="polite">
+  <img src="/brand/logo.svg" width="96" height="96" alt="">
+  <div class="splash-name" translate="no" lang="en" dir="ltr">LumenRead</div>
+  <div class="splash-tag" data-i18n="app.tagline"></div>
+  <div class="splash-bar" aria-hidden="true"><span></span></div>
+</div>
 
-<div id="status" class="status" role="status"></div>
+<a class="skip" href="#reader" data-i18n="a11y.skip"></a>
 
-<main id="reader" class="reader">
-  <section class="empty" id="empty">
-    <h2>把一份英文文档拖进来</h2>
-    <p>按段落重排、逐句朗读、中文对照。选中任意单词即可查词并听发音。<br>支持 PDF、TXT、Markdown、HTML、EPUB。</p>
+<lumen-header></lumen-header>
+
+<div id="status" class="status" role="status" aria-live="polite"></div>
+
+<main id="reader" class="reader" tabindex="-1">
+  <section class="empty" id="empty" tabindex="0" role="button" data-i18n-attr="aria-label:empty.open">
+    <img class="empty-logo" src="/brand/logo.svg" width="72" height="72" alt="">
+    <h2 data-i18n="empty.title"></h2>
+    <p data-i18n="empty.body"></p>
+    <p class="empty-sub" data-i18n="app.subtitle"></p>
     <ul class="keys">
-      <li><kbd>Space</kbd> 播放 / 暂停</li>
-      <li><kbd>←</kbd><kbd>→</kbd> 上一句 / 下一句</li>
-      <li><kbd>J</kbd><kbd>K</kbd> 上一段 / 下一段</li>
-      <li><kbd>T</kbd> 显示或隐藏中文</li>
+      <li><kbd dir="ltr">Space</kbd> <span data-i18n="keys.play"></span></li>
+      <li><kbd dir="ltr">←</kbd><kbd dir="ltr">→</kbd> <span data-i18n="keys.sentence"></span></li>
+      <li><kbd dir="ltr">J</kbd><kbd dir="ltr">K</kbd> <span data-i18n="keys.paragraph"></span></li>
+      <li><kbd dir="ltr">T</kbd> <span data-i18n="keys.translation"></span></li>
     </ul>
   </section>
 </main>
 
-<div id="pop" class="pop" hidden>
+<!-- word popup: IPA, English definition, gloss in the translation language -->
+<div id="pop" class="pop" hidden role="dialog" data-i18n-attr="aria-label:pop.label">
   <div class="pop-head">
-    <span id="popWord" class="pop-word"></span>
-    <span id="popPhon" class="pop-phon"></span>
-    <button id="popPlay" class="icon" title="朗读">▶</button>
+    <span id="popWord" class="pop-word" dir="ltr" lang="en"></span>
+    <span id="popPhon" class="pop-phon ipa" dir="ltr"></span>
+    <button id="popPlay" class="icon" type="button" data-i18n-attr="title:pop.listen;aria-label:pop.listen">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M5 4v16l15-8z"/></svg>
+    </button>
   </div>
-  <div id="popZh" class="pop-zh"></div>
-  <div id="popDef" class="pop-def"></div>
+  <div class="pop-label" data-i18n="pop.gloss"></div>
+  <div id="popGloss" class="pop-gloss"></div>
+  <div class="pop-label" data-i18n="pop.definition"></div>
+  <div id="popDef" class="pop-def" dir="ltr" lang="en"></div>
   <div class="pop-foot">
-    <button id="popSave" class="ghost small">已收录 · 移除</button>
-    <span id="popSrc" class="pop-src"></span>
+    <button id="popSave" class="ghost small" type="button"></button>
+    <span id="popSrc" class="pop-src" dir="ltr"></span>
   </div>
 </div>
 
-<section id="writePanel" class="panel" hidden>
+<section id="writePanel" class="panel" hidden role="dialog" aria-labelledby="writeTitle">
   <div class="panel-bar">
-    <h2>写作练习</h2>
-    <span class="panel-stat">读完一段，用英文复述或总结；本地 LLM 批改并检查你的生词是否用上了</span>
-    <div class="panel-actions"><button id="writeClose" class="ghost">关闭 Esc</button></div>
+    <h2 id="writeTitle" data-i18n="write.title"></h2>
+    <span class="panel-stat" data-i18n="write.intro"></span>
+    <div class="panel-actions"><button id="writeClose" class="ghost" type="button" data-i18n="common.close_esc"></button></div>
   </div>
   <div class="panel-body">
-    <textarea id="writeText" rows="7" placeholder="Retell what you just read, in your own English…"></textarea>
+    <textarea id="writeText" rows="7" dir="ltr" lang="en" data-i18n-attr="placeholder:write.placeholder;aria-label:write.title"></textarea>
     <div class="panel-row">
-      <button id="writeGo" class="primary">批改</button>
+      <button id="writeGo" class="primary" type="button" data-i18n="write.check"></button>
       <span id="writeStatus" class="muted"></span>
     </div>
-    <div id="writeOut" class="write-out" hidden></div>
+    <div id="writeOut" class="write-out" dir="ltr" lang="en" hidden></div>
+    <div id="writeHintRow" class="panel-row" hidden>
+      <button id="writeHintBtn" class="ghost" type="button"></button>
+    </div>
+    <div id="writeHint" class="hint-box" hidden></div>
   </div>
 </section>
 
-<section id="voicePanel" class="panel" hidden>
+<section id="voicePanel" class="panel" hidden role="dialog" aria-labelledby="voiceTitle">
   <header class="panel-bar">
-    <h2>语音与模型</h2>
+    <h2 id="voiceTitle" data-i18n="voice.title"></h2>
     <span id="voiceStat" class="panel-stat"></span>
     <div class="panel-actions">
-      <button id="rescanBtn" class="ghost small">重新扫描</button>
-      <button id="unloadBtn" class="ghost small">释放显存</button>
-      <button id="closeVoice" class="icon" title="关闭">✕</button>
+      <button id="rescanBtn" class="ghost small" type="button" data-i18n="voice.rescan"></button>
+      <button id="unloadBtn" class="ghost small" type="button" data-i18n="voice.unload"></button>
+      <button id="closeVoice" class="icon" type="button" data-i18n-attr="title:common.close;aria-label:common.close">✕</button>
     </div>
   </header>
-
   <div class="panel-body">
     <div class="ab">
-      <input id="abText" class="ab-input" placeholder="输入一句话用来对比试听">
-      <button id="abPlay" class="file">对比试听</button>
+      <input id="abText" class="ab-input" dir="ltr" lang="en" data-i18n-attr="placeholder:voice.ab_placeholder;aria-label:voice.ab_placeholder">
+      <button id="abPlay" class="file" type="button" data-i18n="voice.ab_play"></button>
       <span id="abStat" class="panel-stat"></span>
     </div>
     <div id="engineList" class="engine-list"></div>
-
-    <section class="mt-block">
-      <h3>翻译模型</h3>
-      <div id="mtList" class="mt-list"></div>
-    </section>
   </div>
 </section>
 
-<section id="vocabPanel" class="panel" hidden>
+<section id="vocabPanel" class="panel" hidden role="dialog" aria-labelledby="vocabTitle">
   <header class="panel-bar">
-    <h2>生词本</h2>
+    <h2 id="vocabTitle" data-i18n="vocab.title"></h2>
     <span id="vocabStat" class="panel-stat"></span>
     <div class="panel-actions">
-      <label class="chk"><input type="checkbox" id="onlyUnknown" checked> 只练未掌握</label>
-      <button id="mergeBtn" class="ghost small">合并去重</button>
-      <a id="exportBtn" class="ghost small" href="/api/vocab/export.csv" download>导出 CSV</a>
-      <button id="flashBtn" class="file">开始 Flash</button>
-      <button id="closeVocab" class="icon" title="关闭">✕</button>
+      <label class="chk"><input type="checkbox" id="onlyUnknown" checked> <span data-i18n="vocab.only_unknown"></span></label>
+      <label class="chk"><input type="checkbox" id="flashGloss"> <span data-i18n="vocab.show_gloss"></span></label>
+      <button id="mergeBtn" class="ghost small" type="button" data-i18n="vocab.merge"></button>
+      <a id="exportBtn" class="ghost small" href="/api/vocab/export.csv" download data-i18n="vocab.export"></a>
+      <button id="flashBtn" class="file" type="button" data-i18n="vocab.start_flash"></button>
+      <button id="closeVocab" class="icon" type="button" data-i18n-attr="title:common.close;aria-label:common.close">✕</button>
     </div>
   </header>
   <div id="vocabList" class="vocab-list"></div>
 </section>
 
-<div id="flash" class="flash" hidden>
+<div id="flash" class="flash" hidden role="dialog" aria-modal="true" data-i18n-attr="aria-label:flash.label">
   <div class="flash-top">
     <span id="flashCount" class="flash-count"></span>
-    <button id="flashClose" class="icon" title="退出">✕</button>
+    <button id="flashClose" class="icon" type="button" data-i18n-attr="title:flash.exit;aria-label:flash.exit">✕</button>
   </div>
   <div class="flash-card">
-    <div id="flashWord" class="flash-word"></div>
-    <div id="flashPhon" class="flash-phon"></div>
-    <div id="flashZh" class="flash-zh" hidden></div>
-    <div id="flashCtx" class="flash-ctx" hidden></div>
+    <div id="flashWord" class="flash-word" dir="ltr" lang="en"></div>
+    <div id="flashPhon" class="flash-phon ipa" dir="ltr"></div>
+    <div id="flashBack" class="flash-back" hidden>
+      <div id="flashGlossEl" class="flash-gloss"></div>
+      <div id="flashCtx" class="flash-ctx" dir="ltr" lang="en" hidden></div>
+    </div>
     <div id="flashScore" class="flash-score" hidden>
       <div class="score-row">
-        <span id="scoreNum" class="score-num">–</span>
+        <span id="scoreNum" class="score-num" dir="ltr">–</span>
         <span id="scoreNote" class="score-note"></span>
       </div>
-      <div id="scorePhon" class="score-phon"></div>
+      <div id="scorePhon" class="score-phon" dir="ltr"></div>
+      <button id="scoreHintBtn" class="ghost small" type="button" hidden></button>
+      <div id="scoreHint" class="hint-box" hidden></div>
     </div>
   </div>
-  <div class="flash-hint">
-    <span><kbd>↑</kbd> 发音</span>
-    <span><kbd>↓</kbd> 看中文</span>
-    <span><kbd>R</kbd> <span id="recLabel">跟读评分</span></span>
-    <span><kbd>←</kbd> 上一个</span>
-    <span><kbd>→</kbd> 下一个</span>
-    <span><kbd>Enter</kbd> 认识</span>
-    <span><kbd>Space</kbd> 删除</span>
-    <span><kbd>Esc</kbd> 退出</span>
-  </div>
+  <div class="flash-hint" id="flashKeys"></div>
   <div class="flash-rail"><div id="flashRail" class="flash-rail-fill"></div></div>
 </div>
 
+<section id="settingsPanel" class="panel" hidden role="dialog" aria-labelledby="settingsTitle">
+  <header class="panel-bar">
+    <h2 id="settingsTitle" data-i18n="settings.title"></h2>
+    <div class="panel-actions">
+      <button id="aboutBtn" class="ghost small" type="button" data-i18n="settings.about"></button>
+      <button id="closeSettings" class="icon" type="button" data-i18n-attr="title:common.close;aria-label:common.close">✕</button>
+    </div>
+  </header>
+  <div class="panel-body settings">
+
+    <section class="set-group">
+      <h3 data-i18n="settings.language"></h3>
+      <label class="set-row"><span data-i18n="settings.ui_language"></span>
+        <select id="setLang">
+          <option value="system" data-i18n="lang.system"></option>
+          <option value="en" lang="en" dir="ltr" data-i18n="lang.en"></option>
+          <option value="ar" lang="ar" dir="rtl" data-i18n="lang.ar"></option>
+        </select></label>
+      <label class="set-row"><span data-i18n="settings.theme"></span>
+        <select id="setTheme">
+          <option value="system" data-i18n="settings.theme_system"></option>
+          <option value="light" data-i18n="settings.theme_light"></option>
+          <option value="dark" data-i18n="settings.theme_dark"></option>
+          <option value="black" data-i18n="settings.theme_black"></option>
+        </select></label>
+      <label class="set-row"><span data-i18n="settings.text_size"></span>
+        <select id="setScale">
+          <option value="90" data-i18n="settings.size_small"></option>
+          <option value="100" data-i18n="settings.size_normal"></option>
+          <option value="115" data-i18n="settings.size_large"></option>
+          <option value="130" data-i18n="settings.size_xl"></option>
+        </select></label>
+    </section>
+
+    <section class="set-group">
+      <h3 data-i18n="settings.translation"></h3>
+      <p class="set-note" data-i18n="settings.translation_note"></p>
+      <label class="set-row"><span data-i18n="settings.show_translation"></span>
+        <input type="checkbox" id="setShowTr" role="switch"></label>
+      <label class="set-row"><span data-i18n="settings.target"></span>
+        <select id="setTarget">
+          <option value="ar" lang="ar" data-i18n="settings.target_ar"></option>
+          <option value="zh" lang="zh" data-i18n="settings.target_zh"></option>
+        </select></label>
+      <label class="set-row"><span data-i18n="settings.auto_hints"></span>
+        <input type="checkbox" id="setAutoHints" role="switch"></label>
+      <h4 data-i18n="settings.mt_model"></h4>
+      <div id="mtList" class="mt-list"></div>
+    </section>
+
+    <section class="set-group">
+      <h3 data-i18n="settings.reading"></h3>
+      <label class="set-row"><span data-i18n="settings.voice"></span>
+        <select id="setVoice" dir="ltr"></select></label>
+      <label class="set-row"><span data-i18n="settings.speed"></span>
+        <span class="range-wrap"><input type="range" id="setSpeed" min="0.5" max="1.5" step="0.1" dir="ltr">
+        <output id="setSpeedOut" dir="ltr"></output></span></label>
+    </section>
+
+    <section class="set-group">
+      <h3 data-i18n="settings.pdf"></h3>
+      <label class="set-row"><span data-i18n="settings.ocr"></span>
+        <input type="checkbox" id="setOcr" role="switch"></label>
+      <label class="set-row"><span data-i18n="settings.ocr_arabic"></span>
+        <input type="checkbox" id="setOcrAr" role="switch"></label>
+      <p id="ocrStatus" class="set-note"></p>
+    </section>
+
+    <section class="set-group">
+      <h3 data-i18n="settings.data"></h3>
+      <div class="set-actions">
+        <button id="clearTr" class="ghost" type="button" data-i18n="settings.clear_translations"></button>
+        <button id="clearDocs" class="ghost" type="button" data-i18n="settings.clear_documents"></button>
+      </div>
+      <p class="set-note" data-i18n="settings.privacy"></p>
+    </section>
+  </div>
+</section>
+
+<section id="aboutPanel" class="panel" hidden role="dialog" aria-labelledby="aboutTitle">
+  <header class="panel-bar">
+    <h2 id="aboutTitle" data-i18n="about.title"></h2>
+    <div class="panel-actions">
+      <button id="closeAbout" class="icon" type="button" data-i18n-attr="title:common.close;aria-label:common.close">✕</button>
+    </div>
+  </header>
+  <div class="panel-body about">
+    <div class="about-hero">
+      <img src="/brand/logo.svg" width="72" height="72" alt="">
+      <div>
+        <div class="about-name" translate="no" lang="en" dir="ltr">LumenRead</div>
+        <div class="about-tag" data-i18n="app.tagline"></div>
+        <div class="about-ver"><span data-i18n="about.version"></span> <bdi dir="ltr" id="aboutVer"></bdi></div>
+      </div>
+    </div>
+    <p data-i18n="app.subtitle"></p>
+    <h3 data-i18n="about.privacy_title"></h3>
+    <p data-i18n="about.privacy"></p>
+    <h3 data-i18n="about.upstream_title"></h3>
+    <p data-i18n="about.upstream"></p>
+    <p class="about-links" dir="ltr">
+      <a id="aboutRepo" href="https://github.com/QM378/LLMersion" target="_blank" rel="noopener" translate="no">github.com/QM378/LLMersion</a>
+      · <a id="aboutPaper" href="https://arxiv.org/abs/2609.29672" target="_blank" rel="noopener" translate="no">arXiv:2609.29672</a>
+    </p>
+    <h3 data-i18n="about.license_title"></h3>
+    <p data-i18n="about.license"></p>
+    <h3 data-i18n="about.models_title"></h3>
+    <p data-i18n="about.models_note"></p>
+    <table class="lic" dir="ltr"><tbody id="aboutModels"></tbody></table>
+    <h3 data-i18n="about.fonts_title"></h3>
+    <p data-i18n="about.fonts"></p>
+  </div>
+</section>
+
+<section id="onboard" class="onboard" hidden role="dialog" aria-modal="true" aria-labelledby="onTitle">
+  <div class="onboard-card">
+    <img src="/brand/logo.svg" width="64" height="64" alt="">
+    <h2 id="onTitle" data-i18n="onboard.title"></h2>
+    <p data-i18n="onboard.body"></p>
+    <div class="on-row">
+      <span data-i18n="onboard.language"></span>
+      <div class="seg" role="group" data-i18n-attr="aria-label:onboard.language">
+        <button type="button" data-lang="system" data-i18n="lang.system"></button>
+        <button type="button" data-lang="en" lang="en" dir="ltr" data-i18n="lang.en"></button>
+        <button type="button" data-lang="ar" lang="ar" dir="rtl" data-i18n="lang.ar"></button>
+      </div>
+    </div>
+    <label class="on-row"><span data-i18n="onboard.translation"></span>
+      <input type="checkbox" id="onTr" role="switch" checked></label>
+    <button id="onGo" class="primary" type="button" data-i18n="onboard.go"></button>
+  </div>
+</section>
+
+<div id="ocrBox" class="ocr-box" hidden role="status" aria-live="polite">
+  <div id="ocrText" class="ocr-text"></div>
+  <div class="ocr-bar"><span id="ocrFill"></span></div>
+</div>
+
 <footer class="transport" id="transport" hidden>
-  <button id="prevPara" class="icon" title="上一段">⏮</button>
-  <button id="prevSent" class="icon" title="上一句">◀</button>
-  <button id="play" class="icon play" title="播放 / 暂停">▶</button>
-  <button id="nextSent" class="icon" title="下一句">▶|</button>
-  <button id="nextPara" class="icon" title="下一段">⏭</button>
-  <div class="track" id="track" role="slider" aria-label="阅读进度" tabindex="0">
+  <button id="prevPara" class="icon" type="button" data-i18n-attr="title:transport.prev_para;aria-label:transport.prev_para">
+    <svg class="mirror" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+  <button id="prevSent" class="icon" type="button" data-i18n-attr="title:transport.prev_sent;aria-label:transport.prev_sent">
+    <svg class="mirror" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M15 5v14l-10-7z"/></svg></button>
+  <button id="play" class="icon play" type="button" data-i18n-attr="title:transport.play;aria-label:transport.play">
+    <svg id="playIcon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 5v14l11-7z"/></svg></button>
+  <button id="nextSent" class="icon" type="button" data-i18n-attr="title:transport.next_sent;aria-label:transport.next_sent">
+    <svg class="mirror" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M9 5v14l10-7z"/></svg></button>
+  <button id="nextPara" class="icon" type="button" data-i18n-attr="title:transport.next_para;aria-label:transport.next_para">
+    <svg class="mirror" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M16 5h2v14h-2zM4 5l11 7-11 7z"/></svg></button>
+  <div class="track" id="track" role="slider" tabindex="0" data-i18n-attr="aria-label:transport.progress">
     <div class="track-fill" id="trackFill"></div>
     <div class="track-knob" id="trackKnob"></div>
   </div>
-  <span class="counter" id="counter">0 / 0</span>
+  <label class="pagejump">
+    <span data-i18n="transport.page"></span>
+    <input id="pageJump" type="number" min="1" value="1" dir="ltr" inputmode="numeric" data-i18n-attr="aria-label:transport.go_page">
+    <span class="pagetotal" dir="ltr">/ <bdi id="pageTotal">1</bdi></span>
+  </label>
+  <span class="counter" id="counter" dir="ltr">0 / 0</span>
 </footer>
 
+<script src="/js/i18n.js"></script>
+<script src="/js/header.js"></script>
+<script src="/js/flashcards.js"></script>
 <script src="/app.js"></script>
+<script src="/js/settings.js"></script>
 
 <!-- Conversation practice. The panel is a self-contained widget in a shadow
      tree, fetched only when the button is first pressed, so a reader that is
      never used for speaking pays nothing for it. -->
-<script>
-(function () {
-  const btn = document.getElementById("talkBtn");
-  let panel = null, loading = false;
-
-  fetch("/api/talk-available")
-    .then((r) => r.json())
-    .then((d) => { if (d.available) btn.hidden = false; })
-    .catch(() => {});
-
-  function here() {
-    const u = S.units[P.idx];
-    return S.doc ? { doc_id: S.doc.doc_id, para: u ? u.pi : 0 } : null;
-  }
-
-  btn.onclick = async () => {
-    if (panel) { panel.toggle(); btn.setAttribute("aria-pressed", panel.visible()); return; }
-    if (loading) return;
-    loading = true;
-    btn.textContent = "对话 …";
-    try {
-      if (!window.mountTalkPanel) {
-        await new Promise((ok, no) => {
-          const t = document.createElement("script");
-          t.src = "/talk/panel.js";
-          t.onload = ok; t.onerror = () => no(new Error("load failed"));
-          document.head.appendChild(t);
-        });
-      }
-      panel = mountTalkPanel({
-        getContext: here,
-        // talking over the reader should stop the reader, not compete with it
-        pauseHost: () => { if (P.playing) pause(); },
-      });
-      btn.setAttribute("aria-pressed", "true");
-    } catch (e) {
-      say("对话模块加载失败", 4000);
-    }
-    btn.textContent = "对话";
-    loading = false;
-  };
-})();
-</script>
+<script src="/js/talk-loader.js"></script>
 </body>
 </html>

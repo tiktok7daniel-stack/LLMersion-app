@@ -1,12 +1,12 @@
 @echo off
-rem  LLMersion-1 — one-time setup for Windows.
+rem  LumenRead — one-time setup for Windows.
 rem  Finds conda (or falls back to venv), builds the environment, installs the
 rem  right PyTorch for this machine, then the reader and its default models.
 setlocal EnableDelayedExpansion
 cd /d "%~dp0"
 
 echo.
-echo   LLMersion-1 setup
+echo   LumenRead setup
 echo   ------------------------------------------------------------
 
 if not exist "server\main.py" (
@@ -77,6 +77,13 @@ echo   installing Kokoro (the voice) ...
 pip install -r requirements\voice.txt --quiet || goto :fail
 echo   installing the small translation model and pronunciation scoring ...
 pip install -r requirements\translate.txt --quiet || goto :fail
+rem optional OCR for scanned PDFs (pytesseract here; the Tesseract program is a separate install)
+pip install -r requirements\ocr.txt --quiet
+where tesseract >nul 2>&1
+if errorlevel 1 (
+  echo   note: for scanned PDFs install Tesseract with English and Arabic data:
+  echo         https://github.com/UB-Mannheim/tesseract/wiki  ^(see docs\INSTALL.md^)
+)
 rem optional speed-up; there is a working fallback if the wheel is unavailable
 pip install blingfire --quiet 2>nul
 
@@ -86,11 +93,11 @@ echo   ------------------------------------------------------------
 python -c "import torch;d='cuda' if torch.cuda.is_available() else 'cpu';print('  torch     ',torch.__version__,'on',d);x=torch.randn(512,512,device=d);float((x@x).sum());print('  kernel     ok')" || goto :fail
 python -c "import fitz,fastapi,soundfile;print('  reader     ok')" || goto :fail
 python -c "import kokoro;print('  kokoro     ok')" || goto :fail
-python -c "import transformers;print('  translate  ok (opus-mt, downloads on first use)')" || goto :fail
+python -c "import transformers;print('  translate  ok (opus-mt en-ar / en-zh, downloads on first use)')" || goto :fail
 echo   ------------------------------------------------------------
 echo.
 echo   Done. Double-click start-windows.bat to run it.
-echo   For better Chinese, see docs\INSTALL.md for Ollama.
+echo   For the tutor, hints and better translation, see docs\INSTALL.md for Ollama.
 echo.
 pause
 exit /b 0

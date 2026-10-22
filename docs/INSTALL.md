@@ -1,4 +1,4 @@
-# Install
+# Install LumenRead
 
 ## The short version
 
@@ -72,7 +72,7 @@ ollama pull gemma3:4b     # ~3 GB, good default, fits 16 GB of RAM
 ollama pull gemma3:27b    # ~17 GB, clearly better, wants 24 GB+ of VRAM
 ```
 
-Restart the reader and pick the model in the 语音 panel. Both backends stay
+Restart the reader and pick the model in Settings → Translation aid. Both backends stay
 available, their caches are separate, and you can switch mid-document.
 
 ## Optional: offline dictionary
@@ -148,3 +148,50 @@ window, or add `set PR_PORT=8850` to the start script.
 
 **The first paragraph is slow** — that is synthesis and translation running.
 Both are cached, so a second pass through the same paper is instant.
+
+
+## Scanned PDFs: Tesseract (optional)
+
+Text PDFs need nothing extra. For scanned PDFs, install the Python wrapper and the Tesseract program
+with its language packs (English always; Arabic if you read Arabic scans):
+
+```bash
+pip install -r requirements/ocr.txt
+```
+
+| OS | Tesseract |
+|---|---|
+| Windows | Install from <https://github.com/UB-Mannheim/tesseract/wiki> and tick **Arabic** under *Additional language data*. If it is not on `PATH`, set `PR_TESSERACT="C:\Program Files\Tesseract-OCR\tesseract.exe"`. |
+| macOS | `brew install tesseract tesseract-lang` |
+| Linux (Debian/Ubuntu) | `sudo apt install tesseract-ocr tesseract-ocr-eng tesseract-ocr-ara` |
+
+Check with `tesseract --list-langs` (it must list `eng`, and `ara` for Arabic). Then turn on
+Settings → *PDF and scanned pages* → *Read scanned PDFs with OCR* (on by default) and, for Arabic
+scans, *Also recognise Arabic text*. Without Tesseract a scanned PDF gives a clear message and text
+pages are still read.
+
+## Arabic translation model
+
+`Helsinki-NLP/opus-mt-en-ar` downloads on first use (needs `requirements/translate.txt`). To use another
+model set `PR_MT_MODEL_AR` (e.g. `facebook/nllb-200-distilled-600M`, non-commercial licence) or pick it
+in Settings. With Ollama running, any pulled model can translate too.
+
+## Optional Arabic voice (Piper)
+
+Never needed for reading. `pip install piper-tts`, download an Arabic voice (`.onnx` and `.onnx.json`,
+e.g. `ar_JO-kareem-medium`) from <https://huggingface.co/rhasspy/piper-voices/tree/main/ar> into
+`<data>/models/tts/piper-ar/`, then *Voice → Rescan*.
+
+## Linux
+
+```bash
+sudo apt install python3-venv espeak-ng tesseract-ocr tesseract-ocr-eng tesseract-ocr-ara
+python3 -m venv .venv && . .venv/bin/activate
+pip install torch
+pip install -r requirements/core.txt -r requirements/voice.txt -r requirements/translate.txt -r requirements/ocr.txt
+python -m server.main
+```
+
+## Android
+
+See the *Android app* section of the README.

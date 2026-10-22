@@ -77,8 +77,8 @@ def speak(text: str) -> dict:
         except Exception:
             pass  # fall through to the local path rather than losing the turn
 
-    from server import tts
-    out = tts.render(text)
+    from server import settings, tts
+    out = tts.render(text, speed=settings.get("tts_speed"))
     return {"fname": _fname(out["url"]), "rate": out.get("rate", 1.0),
             "via": "self" if IN_PROCESS else "local"}
 
@@ -113,8 +113,8 @@ def speak_block(text: str) -> dict:
         except Exception:
             pass
 
-    from server import tts
-    out = tts.render_block(text, sents)
+    from server import settings, tts
+    out = tts.render_block(text, sents, speed=settings.get("tts_speed"))
     return {"fname": _fname(out["url"]), "rate": out.get("rate", 1.0),
             "sents": sents, "marks": out.get("marks"),
             "via": "self" if IN_PROCESS else "local"}

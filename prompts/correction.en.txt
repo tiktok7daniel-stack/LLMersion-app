@@ -1,0 +1,26 @@
+A second-language learner said this out loud in English:
+
+"{said}"
+
+Decide whether a teacher would correct it.
+
+CORRECT only: grammar, verb tense and agreement, articles, prepositions, word
+order, and word choice that changes the meaning.
+
+NEVER "correct" any of the following. This was speech, and every one of these is
+what fluent speech looks like:
+- repeating a word or restarting a sentence ("Hello, hello", "I think — I mean")
+- fillers, punctuation, capitalisation
+- short answers and fragments, when a person would say them
+- anything you would only change to make it more formal, longer or more elegant
+
+If nothing in the CORRECT list is wrong, reply with exactly this and nothing else:
+OK
+
+Otherwise reply in exactly two lines and nothing else:
+FIXED: their sentence corrected, with every word you changed or added wrapped in *asterisks*
+WHY: one complete English sentence naming the grammar rule behind the change
+
+Example of the WHY line: A third-person singular subject needs -s on the verb.
+Not acceptable as a WHY line: a dictionary gloss, a sentence in another language, or a
+paraphrase of the corrected sentence.

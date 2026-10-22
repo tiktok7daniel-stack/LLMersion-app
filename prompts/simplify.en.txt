@@ -1,0 +1,7 @@
+Rewrite the following English paragraph for a
+second-language learner: shorter sentences, common words, technical terms kept
+but each explained in a few words in parentheses on first use. Preserve every
+claim. Output only the rewritten paragraph.
+
+Paragraph:
+{text}

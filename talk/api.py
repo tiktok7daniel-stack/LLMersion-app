@@ -16,9 +16,14 @@ from fastapi import APIRouter, Body, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
 from . import bridge, config, dialogue, stt, store
-from server import cache
+from server import cache, hints
 
 router = APIRouter(prefix="/api/talk", tags=["talk"])
+
+
+def _fail(status: int, key: str, msg: str) -> HTTPException:
+    """Same shape as server.main.fail: the panel localises `detail.key`."""
+    return HTTPException(status, detail={"key": key, "msg": msg})
 POOL = ThreadPoolExecutor(max_workers=12)
 # `turn` hands its whole body to a worker and that worker submits two more,
 # so the pool has to be comfortably wider than the number of concurrent turns.
@@ -33,7 +38,7 @@ def _sess(session: str) -> dict:
     row = store.conn().execute(
         "SELECT mode,topic,doc_id,para FROM session WHERE id=?", (session,)).fetchone()
     if not row:
-        raise HTTPException(404, "session not found — start a new one")
+        raise _fail(404, "err.talk_session", "Session not found - start a new one.")
     _SESS[session] = {"mode": row["mode"] or "free", "topic": row["topic"] or "",
                       "doc_id": row["doc_id"] or "", "para": row["para"] or 0}
     return _SESS[session]
@@ -90,15 +95,15 @@ def start(payload: dict = Body(...)) -> dict:
     para = payload.get("para")
 
     if mode == "topic" and not topic:
-        raise HTTPException(400, "写一句想聊什么")
+        raise _fail(400, "err.talk_topic_needed", "Type what you would like to talk about.")
     ctx = None
     if mode == "doc":
         if not doc_id:
-            raise HTTPException(400, "选一份文档")
+            raise _fail(400, "err.talk_doc_needed", "Pick a document.")
         try:
             ctx = dialogue.passage(doc_id, None if para is None else int(para))
         except KeyError as exc:
-            raise HTTPException(404, str(exc)) from exc
+            raise _fail(404, "err.doc_not_found", str(exc)) from exc
 
     words = dialogue.target_words()
     sid = uuid.uuid4().hex[:12]
@@ -111,7 +116,7 @@ def start(payload: dict = Body(...)) -> dict:
     try:
         text = dialogue.open_turn(mode, ctx, topic, words)
     except Exception as exc:  # noqa: BLE001
-        raise HTTPException(503, f"对话模型没有响应：{exc.__class__.__name__}") from exc
+        raise _fail(503, "err.talk_llm_down", f"The tutor model did not respond ({exc.__class__.__name__}).") from exc
 
     used = dialogue.used_words(text, words)
     store.add_turn(sid, "tutor", text, used, secs=round(time.time() - t0, 2))
@@ -212,16 +217,17 @@ def _do_turn(session: str, text: str, score: int, coach: int, wav: bytes) -> dic
     stt_secs = 0.0
     if not said:
         if not wav:
-            raise HTTPException(400, "say something or type something")
+            raise _fail(400, "err.talk_nothing", "Say something or type something.")
         if not stt.info()["available"]:
-            raise HTTPException(503, "没有可用的语音识别 — 见 talk/README.md")
+            raise _fail(503, "err.stt_unavailable", "No speech recognition is available - see talk/README.md")
         try:
             got = stt.transcribe(wav)
         except Exception as exc:  # noqa: BLE001
-            raise HTTPException(500, f"识别失败：{exc}") from exc
+            raise _fail(500, "err.stt_failed", f"Speech recognition failed: {exc}") from exc
         said, stt_secs = got["text"], got["secs"]
     if not said:
-        return {"empty": True, "message": "没听清，靠近麦克风再说一次"}
+        return {"empty": True, "message_key": "err.talk_empty",
+                "message": "Nothing heard. Move closer to the microphone and try again."}
 
     ctx = _context(s)
     words = dialogue.target_words()
@@ -237,7 +243,7 @@ def _do_turn(session: str, text: str, score: int, coach: int, wav: bytes) -> dic
         for f in (fut_score, fut_coach):
             if f:
                 f.cancel()
-        raise HTTPException(503, f"对话模型没有响应：{exc.__class__.__name__}") from exc
+        raise _fail(503, "err.talk_llm_down", f"The tutor model did not respond ({exc.__class__.__name__}).") from exc
 
     spoken = dialogue.used_words(said, words)
     tutor_used = dialogue.used_words(reply_text, words)
@@ -288,10 +294,20 @@ def audio(fname: str):
     """Serve from the shared cache directory, wherever the file was made."""
     path = (config.AUDIO_DIR / fname).resolve()
     if config.AUDIO_DIR.resolve() not in path.parents or not path.exists():
-        raise HTTPException(404, "audio not found")
+        raise _fail(404, "err.file_not_found", "audio not found")
     media = "audio/mpeg" if path.suffix == ".mp3" else "audio/wav"
     return FileResponse(path, media_type=media,
                         headers={"Cache-Control": "public, max-age=604800"})
+
+
+@router.post("/hint")
+def hint(payload: dict = Body(...)) -> dict:
+    """Opt-in hint (Arabic or Chinese) for one tutor line, correction or score."""
+    ctx = {k: v for k, v in payload.items() if k not in ("kind", "lang")}
+    try:
+        return hints.make(payload.get("kind", ""), payload.get("lang", ""), ctx)
+    except hints.HintError as exc:
+        return {"error_key": exc.key, "error": str(exc)}
 
 
 @router.get("/words")

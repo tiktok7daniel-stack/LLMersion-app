@@ -1,0 +1,1 @@
+Give a one-line English definition of the word "{word}" for a language learner, in simple words, under 20 words. Output only the definition.

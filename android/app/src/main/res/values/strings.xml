@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">LumenRead</string>
+    <string name="tagline">Read. Listen. Speak. Understand.</string>
+    <string name="connect_title">Connect to your LumenRead server</string>
+    <string name="connect_body">LumenRead runs its models on your own computer. Start the server there, then enter its address here. Nothing is sent to anyone else.</string>
+    <string name="server_hint">Server address, for example http://192.168.1.20:8848</string>
+    <string name="token_hint">Access token (only if you set PR_TOKEN)</string>
+    <string name="connect">Connect</string>
+    <string name="change_server">Change server</string>
+    <string name="bad_url">Enter an address that starts with http:// or https://</string>
+    <string name="load_failed">Cannot reach the server. Check that it is running and that the phone is on the same network.</string>
+    <string name="retry">Try again</string>
+    <string name="mic_needs_secure">The microphone only works on https:// or http://localhost. See the README for how to set that up.</string>
+</resources>

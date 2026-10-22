@@ -1,0 +1,1 @@
+Open the conversation. One short line, then one question worth answering. Same rules, same one-line output.

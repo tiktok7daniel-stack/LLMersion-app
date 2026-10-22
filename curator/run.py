@@ -55,7 +55,7 @@ def write_markdown(doc: dict, topic: str, source: str, refined: list[str]) -> st
            "share-alike apply." if source == "wikipedia" else
            "Derived from an arXiv preprint; see the source for its license.")
     lines = [
-        f"<!-- LLMersion-1 curator | {date} | topic: {topic} | source: {doc['url']}",
+        f"<!-- LumenRead curator | {date} | topic: {topic} | source: {doc['url']}",
         f"     {lic}",
         f"     Rate this material:  python -m curator.feedback  (id: {doc['id']}) -->",
         "",
@@ -191,7 +191,7 @@ def main() -> int:
         print("prepared:")
         for w in written:
             print(f"  {w}")
-        print("open them in LLMersion-1; rate them with: python -m curator.feedback")
+        print("open them in LumenRead; rate them with: python -m curator.feedback")
     else:
         print("nothing new tonight (all candidates seen, or sources unreachable)")
     return 0
