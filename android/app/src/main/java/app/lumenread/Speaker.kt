@@ -24,10 +24,11 @@ class Speaker(context: Context, private val onReady: (Boolean) -> Unit) {
         // the init callback may run before the constructor returns, so `tts` is assigned first
         tts = TextToSpeech(context.applicationContext) { status -> main.post { configure(status) } }
         tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-            override fun onStart(id: String) { main.post { onStart(id) } }
-            override fun onDone(id: String) { main.post { onDone(id) } }
+            // this@Speaker: the bare names would call the listener's own methods
+            override fun onStart(id: String) { main.post { this@Speaker.onStart(id) } }
+            override fun onDone(id: String) { main.post { this@Speaker.onDone(id) } }
             @Deprecated("Deprecated in Java")
-            override fun onError(id: String) { main.post { onDone(id) } }
+            override fun onError(id: String) { main.post { this@Speaker.onDone(id) } }
         })
     }
 
