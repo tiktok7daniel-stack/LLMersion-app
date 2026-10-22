@@ -5,6 +5,11 @@ on:
     paths: ["android/**", "web/brand/**", ".github/workflows/android.yml"]
   workflow_dispatch:
 
+# a newer push cancels an older build, so the release always holds the newest APK
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write          # to publish the APK as a GitHub release asset
 
