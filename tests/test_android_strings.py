@@ -61,7 +61,7 @@ def test_android_app_supports_rtl_and_mirrors_direction_icons():
 
 def test_android_offline_dictionary_is_bundled():
     import gzip
-    d = ROOT / "android" / "app" / "src" / "main" / "assets" / "dict.tsv.gz"
+    d = ROOT / "android" / "app" / "src" / "main" / "assets" / "dict.bin"
     rows = {l.split("\t")[0]: l.rstrip("\n").split("\t") for l in gzip.open(d, "rt", encoding="utf-8")}
     assert len(rows) > 100_000
     assert rows["light"][1] == "ˈlaɪt" and rows["light"][2].startswith("n.")

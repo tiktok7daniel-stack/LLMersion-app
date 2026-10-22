@@ -11,8 +11,10 @@ android {
         applicationId 'app.lumenread'
         minSdk 24
         targetSdk 34
-        versionCode 2
-        versionName '1.1.0'
+        versionCode 3
+        versionName '1.1.1'
+        // phones only: x86 builds are for emulators and double the size of the APK
+        ndk { abiFilters 'arm64-v8a', 'armeabi-v7a' }
     }
 
     buildTypes {
@@ -26,7 +28,9 @@ android {
     }
     kotlinOptions { jvmTarget = '17' }
     androidResources {
-        noCompress 'gz'        // dict.tsv.gz is already compressed
+        // dict.bin is gzip data. It must not end in ".gz": the build tools silently
+        // unpack *.gz assets and drop the suffix, and the app would not find it.
+        noCompress 'bin'
     }
     packagingOptions {
         resources { excludes += ['META-INF/DEPENDENCIES', 'META-INF/LICENSE*', 'META-INF/NOTICE*'] }
@@ -43,8 +47,9 @@ dependencies {
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1'
     // on-device English -> Arabic / Chinese translation (model downloads once, then offline)
     implementation 'com.google.mlkit:translate:17.0.3'
-    // on-device OCR for scanned PDF pages (Latin script)
-    implementation 'com.google.mlkit:text-recognition:16.0.1'
+    // on-device OCR for scanned PDF pages (Latin script). The Play Services variant keeps the
+    // ~11 MB model per CPU type out of the APK; Google Play downloads it on first use.
+    implementation 'com.google.android.gms:play-services-mlkit-text-recognition:19.0.1'
     // PDF text extraction, page by page (Apache-2.0)
     implementation 'com.tom-roush:pdfbox-android:2.0.27.0'
 }

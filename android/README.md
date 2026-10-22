@@ -6,7 +6,7 @@ A standalone phone app (Kotlin, Material 3). It does **not** need a computer or 
 |---|---|
 | Read aloud, 0.5×–1.5× (default 0.8×), sentence highlight | the phone's own English text-to-speech, one utterance per sentence |
 | Translation under each paragraph (Arabic or Chinese) | Google ML Kit on-device translation; the language model downloads once (~30 MB), then works offline |
-| Tap a word: IPA, English definition, Arabic meaning | bundled dictionary (CMU pronunciations + WordNet definitions, `assets/dict.tsv.gz`) + ML Kit |
+| Tap a word: IPA, English definition, Arabic meaning | bundled dictionary (CMU pronunciations + WordNet definitions, `assets/dict.bin`) + ML Kit |
 | PDF import, page by page, "go to page" | PdfBox-Android; files cached by hash |
 | Scanned PDFs | ML Kit on-device OCR (Latin script; Arabic scans are not supported on the phone) |
 | Vocabulary + spaced-repetition flashcards | SQLite; English front, Arabic back (optional) |

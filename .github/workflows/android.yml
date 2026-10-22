@@ -37,8 +37,18 @@ jobs:
         working-directory: android
         run: gradle assembleDebug --no-daemon
 
-      - name: Name the APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk LumenRead-debug.apk
+      - name: Check the APK
+        run: |
+          APK=android/app/build/outputs/apk/debug/app-debug.apk
+          SIZE=$(stat -c %s "$APK")
+          echo "APK size: $((SIZE / 1024 / 1024)) MB"
+          # the dictionary must ship as-is (a *.gz asset would be unpacked and renamed)
+          unzip -l "$APK" | grep -q "assets/dict.bin" || { echo "assets/dict.bin missing"; exit 1; }
+          # keep it small enough to download on a phone
+          [ "$SIZE" -lt $((80 * 1024 * 1024)) ] || { echo "APK too large"; exit 1; }
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BT/apksigner" verify --verbose "$APK" | head -5
+          cp "$APK" LumenRead-debug.apk
 
       - uses: actions/upload-artifact@v4
         with:

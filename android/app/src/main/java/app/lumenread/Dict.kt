@@ -12,7 +12,7 @@ data class Entry(val word: String, val ipa: String, val definition: String, val 
 
 /**
  * Offline English dictionary: IPA (CMU Pronouncing Dictionary) and definitions (WordNet 3.0),
- * shipped as assets/dict.tsv.gz and unpacked into SQLite on first run. Built by
+ * shipped as assets/dict.bin (gzip) and unpacked into SQLite on first run. Built by
  * tools/build_android_dict.py.
  */
 object Dict {
@@ -40,7 +40,7 @@ object Dict {
         d.beginTransaction()
         try {
             val st = d.compileStatement("INSERT OR REPLACE INTO dict (word, ipa, def) VALUES (?,?,?)")
-            BufferedReader(InputStreamReader(GZIPInputStream(c.assets.open("dict.tsv.gz")), Charsets.UTF_8)).use { r ->
+            BufferedReader(InputStreamReader(GZIPInputStream(c.assets.open("dict.bin")), Charsets.UTF_8)).use { r ->
                 r.lineSequence().forEach { line ->
                     val f = line.split('\t')
                     if (f.size >= 3) {

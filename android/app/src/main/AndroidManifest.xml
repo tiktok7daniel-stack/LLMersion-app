@@ -39,6 +39,9 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
+        <!-- ask Play Services to fetch the OCR model when the app is installed -->
+        <meta-data android:name="com.google.mlkit.vision.DEPENDENCIES" android:value="ocr" />
+
         <activity android:name=".ReaderActivity" android:exported="false" />
         <activity android:name=".VocabActivity" android:exported="false" />
         <activity android:name=".FlashcardActivity" android:exported="false" />

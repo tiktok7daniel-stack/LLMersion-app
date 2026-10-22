@@ -4,7 +4,7 @@
     npm install cmu-pronouncing-dictionary wordnet-db      (anywhere)
     python tools/build_android_dict.py <node_modules dir>
 
-Writes android/app/src/main/assets/dict.tsv.gz, one line per word:
+Writes android/app/src/main/assets/dict.bin, one line per word:
 
     word <TAB> IPA <TAB> definition(s)
 
@@ -22,7 +22,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT = ROOT / "android" / "app" / "src" / "main" / "assets" / "dict.tsv.gz"
+OUT = ROOT / "android" / "app" / "src" / "main" / "assets" / "dict.bin"
 
 ARPA = {
     "AA": "ɑ", "AE": "æ", "AH": "ʌ", "AO": "ɔ", "AW": "aʊ", "AY": "aɪ", "B": "b", "CH": "tʃ",
