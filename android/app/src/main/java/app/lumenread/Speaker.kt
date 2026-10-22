@@ -18,7 +18,20 @@ class Speaker(context: Context, private val onReady: (Boolean) -> Unit) {
     var onDone: (String) -> Unit = {}
     private var ok = false
 
-    private val tts: TextToSpeech = TextToSpeech(context.applicationContext) { status ->
+    private lateinit var tts: TextToSpeech
+
+    init {
+        // the init callback may run before the constructor returns, so `tts` is assigned first
+        tts = TextToSpeech(context.applicationContext) { status -> main.post { configure(status) } }
+        tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+            override fun onStart(id: String) { main.post { onStart(id) } }
+            override fun onDone(id: String) { main.post { onDone(id) } }
+            @Deprecated("Deprecated in Java")
+            override fun onError(id: String) { main.post { onDone(id) } }
+        })
+    }
+
+    private fun configure(status: Int) {
         ok = status == TextToSpeech.SUCCESS
         if (ok) {
             val r = tts.setLanguage(Locale.US)
@@ -28,16 +41,7 @@ class Speaker(context: Context, private val onReady: (Boolean) -> Unit) {
                 tts.setSpeechRate(Prefs.speed)
             }
         }
-        main.post { onReady(ok) }
-    }
-
-    init {
-        tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-            override fun onStart(id: String) { main.post { onStart(id) } }
-            override fun onDone(id: String) { main.post { onDone(id) } }
-            @Deprecated("Deprecated in Java")
-            override fun onError(id: String) { main.post { onDone(id) } }
-        })
+        onReady(ok)
     }
 
     val ready get() = ok
