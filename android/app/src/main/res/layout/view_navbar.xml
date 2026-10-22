@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- floating glass navigation pill, shared by the main screens -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/navbar" android:layout_width="match_parent" android:layout_height="64dp"
+    android:layout_gravity="bottom" android:layout_marginStart="20dp" android:layout_marginEnd="20dp"
+    android:layout_marginBottom="16dp" android:orientation="horizontal" android:gravity="center"
+    android:background="@drawable/bg_glass_pill" android:elevation="12dp" android:padding="6dp">
+    <LinearLayout android:id="@+id/navHome" style="@style/NavItem">
+        <ImageView style="@style/NavIcon" android:src="@drawable/ic_home" android:importantForAccessibility="no" />
+        <TextView style="@style/NavLabel" android:text="@string/nav_home" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/navWords" style="@style/NavItem">
+        <ImageView style="@style/NavIcon" android:src="@drawable/ic_cards" android:importantForAccessibility="no" />
+        <TextView style="@style/NavLabel" android:text="@string/nav_words" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/navReview" style="@style/NavItem">
+        <ImageView style="@style/NavIcon" android:src="@drawable/ic_check" android:importantForAccessibility="no" />
+        <TextView style="@style/NavLabel" android:text="@string/nav_review" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/navSettings" style="@style/NavItem">
+        <ImageView style="@style/NavIcon" android:src="@drawable/ic_settings" android:importantForAccessibility="no" />
+        <TextView style="@style/NavLabel" android:text="@string/nav_settings" />
+    </LinearLayout>
+</LinearLayout>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- page background: a deep vertical gradient with a soft brand glow at the top -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape><gradient android:angle="270" android:startColor="@color/bg_top" android:endColor="@color/bg_bottom" /></shape>
+    </item>
+    <item>
+        <shape>
+            <gradient android:type="radial" android:gradientRadius="520dp" android:centerX="0.85" android:centerY="0.0"
+                android:startColor="@color/glow" android:endColor="#00000000" />
+        </shape>
+    </item>
+</layer-list>

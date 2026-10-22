@@ -23,6 +23,13 @@ GitHub → Actions → **Android APK** → run it (or push to `android/`). The A
 `apk-latest` release and to the run's artifacts. On the phone: download, allow "install unknown
 apps", install.
 
+## Updating
+
+Every build is signed with the same key (`keystore/lumenread-sideload.jks`), so a new APK
+installs over the previous one and keeps your vocabulary. Versions built before this key was
+added were signed with a random key: uninstall that one once, then install the new APK.
+The key is public and meant for side-loading; use your own secret key before publishing to a store.
+
 ## Build locally
 
 JDK 17, Android SDK 34, Gradle 8.9: `cd android && gradle assembleDebug` →

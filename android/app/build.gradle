@@ -11,15 +11,33 @@ android {
         applicationId 'app.lumenread'
         minSdk 24
         targetSdk 34
-        versionCode 4
-        versionName '1.2.0'
+        versionCode 5
+        versionName '1.3.0'
         // phones only: x86 builds are for emulators and double the size of the APK
         ndk { abiFilters 'arm64-v8a', 'armeabi-v7a' }
     }
 
+    // One fixed key for every build, so a new APK installs over the previous one.
+    // GitHub runners otherwise make a fresh random debug key per build, and Android
+    // refuses the update ("package conflicts with an existing package").
+    // This key is for side-loading only and is public; use your own (and keep it
+    // secret) before publishing to a store.
+    signingConfigs {
+        sideload {
+            storeFile rootProject.file('keystore/lumenread-sideload.jks')
+            storePassword 'lumenread'
+            keyAlias 'lumenread'
+            keyPassword 'lumenread'
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig signingConfigs.sideload
+        }
         release {
             minifyEnabled false
+            signingConfig signingConfigs.sideload
         }
     }
     compileOptions {

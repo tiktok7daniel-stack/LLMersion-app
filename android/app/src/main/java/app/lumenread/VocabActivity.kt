@@ -27,7 +27,8 @@ class VocabActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_list)
-        toolbar(getString(R.string.vocabulary))
+        toolbar(getString(R.string.vocabulary), back = false)
+        NavBar.bind(this, NavBar.Tab.WORDS)
         list = findViewById(R.id.list)
         list.layoutManager = LinearLayoutManager(this)
         list.adapter = Adapter()

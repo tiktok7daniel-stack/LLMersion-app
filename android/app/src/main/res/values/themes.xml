@@ -3,30 +3,153 @@
     <style name="Theme.LumenRead" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/primary</item>
         <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorPrimaryContainer">@color/glass_selected</item>
+        <item name="colorOnPrimaryContainer">@color/text</item>
         <item name="colorSecondary">@color/accent</item>
         <item name="colorOnSecondary">@color/ink</item>
+        <item name="colorSecondaryContainer">@color/glass_selected</item>
+        <item name="colorOnSecondaryContainer">@color/text</item>
         <item name="colorTertiary">@color/accent</item>
         <item name="android:colorBackground">@color/surface</item>
         <item name="colorSurface">@color/card</item>
+        <item name="colorSurfaceContainer">@color/card</item>
+        <item name="colorSurfaceContainerHigh">@color/card</item>
         <item name="colorOnSurface">@color/text</item>
+        <item name="colorOnSurfaceVariant">@color/text2</item>
+        <item name="colorOutline">@color/glass_stroke</item>
         <item name="colorOnBackground">@color/text</item>
-        <item name="android:windowBackground">@color/surface</item>
-        <item name="android:statusBarColor">@color/surface</item>
-        <item name="android:navigationBarColor">@color/surface</item>
+        <item name="colorControlNormal">@color/text</item>
+        <item name="android:textColorPrimary">@color/text</item>
+        <item name="android:textColorSecondary">@color/text2</item>
+        <item name="android:windowBackground">@drawable/bg_app</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@color/bg_bottom</item>
         <item name="android:windowLightStatusBar">@bool/light_bars</item>
+        <item name="android:windowLightNavigationBar">@bool/light_bars</item>
+        <!-- rounder everything -->
+        <item name="shapeAppearanceSmallComponent">@style/Shape.Pill</item>
+        <item name="shapeAppearanceMediumComponent">@style/Shape.Card</item>
+        <item name="shapeAppearanceLargeComponent">@style/Shape.Card</item>
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.LumenRead.Dialog</item>
+        <item name="bottomSheetDialogTheme">@style/ThemeOverlay.LumenRead.Sheet</item>
     </style>
 
-    <!-- true black for OLED screens; selected in Settings, applied before setContentView -->
+    <style name="Shape.Pill" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
+    <style name="Shape.Card" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">24dp</item>
+    </style>
+
+    <style name="ThemeOverlay.LumenRead.Dialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="shapeAppearanceOverlay">@style/Shape.Dialog</item>
+        <item name="colorSurface">@color/card</item>
+        <item name="colorSurfaceContainerHigh">@color/card</item>
+    </style>
+    <style name="Shape.Dialog" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">28dp</item>
+    </style>
+
+    <style name="ThemeOverlay.LumenRead.Sheet" parent="ThemeOverlay.Material3.BottomSheetDialog">
+        <item name="bottomSheetStyle">@style/LumenRead.Sheet</item>
+    </style>
+    <style name="LumenRead.Sheet" parent="Widget.Material3.BottomSheet.Modal">
+        <item name="backgroundTint">@color/card</item>
+        <item name="shapeAppearance">@style/Shape.Sheet</item>
+    </style>
+    <style name="Shape.Sheet" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSizeTopLeft">28dp</item>
+        <item name="cornerSizeTopRight">28dp</item>
+        <item name="cornerSizeBottomLeft">0dp</item>
+        <item name="cornerSizeBottomRight">0dp</item>
+    </style>
+
+    <!-- true black for OLED screens -->
     <style name="Theme.LumenRead.Black" parent="Theme.LumenRead">
         <item name="android:colorBackground">#000000</item>
-        <item name="android:windowBackground">#000000</item>
-        <item name="colorSurface">#0A0F1A</item>
-        <item name="android:statusBarColor">#000000</item>
+        <item name="android:windowBackground">@drawable/bg_app_black</item>
         <item name="android:navigationBarColor">#000000</item>
     </style>
 
-    <!-- shown while the app starts: the logo on paper -->
     <style name="Theme.LumenRead.Launch" parent="Theme.LumenRead">
         <item name="android:windowBackground">@drawable/splash</item>
+    </style>
+
+    <!-- text styles -->
+    <style name="Text.Display" parent="">
+        <item name="android:textSize">34sp</item>
+        <item name="android:fontFamily">sans-serif-black</item>
+        <item name="android:textColor">@color/text</item>
+        <item name="android:letterSpacing">-0.02</item>
+        <item name="android:lineSpacingMultiplier">1.05</item>
+    </style>
+    <style name="Text.Title" parent="">
+        <item name="android:textSize">20sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textColor">@color/text</item>
+    </style>
+    <style name="Text.Section" parent="">
+        <item name="android:textSize">13sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textColor">@color/text2</item>
+        <item name="android:letterSpacing">0.04</item>
+    </style>
+    <style name="Text.Body" parent="">
+        <item name="android:textSize">15sp</item>
+        <item name="android:textColor">@color/text2</item>
+    </style>
+    <style name="Text.Caption" parent="">
+        <item name="android:textSize">12sp</item>
+        <item name="android:textColor">@color/text3</item>
+    </style>
+
+    <!-- a glass card container -->
+    <style name="Glass" parent="">
+        <item name="android:background">@drawable/bg_glass</item>
+        <item name="android:padding">18dp</item>
+    </style>
+
+    <style name="Button.Gradient" parent="Widget.Material3.Button">
+        <item name="android:background">@drawable/bg_gradient_button</item>
+        <item name="backgroundTint">@null</item>
+        <item name="android:textColor">#FFFFFF</item>
+        <item name="iconTint">#FFFFFF</item>
+        <item name="android:minHeight">52dp</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+    <style name="Button.Glass" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="strokeColor">@color/glass_stroke</item>
+        <item name="backgroundTint">@color/glass</item>
+        <item name="android:textColor">@color/text</item>
+        <item name="iconTint">@color/text</item>
+        <item name="android:minHeight">48dp</item>
+    </style>
+
+    <!-- navigation pill items -->
+    <style name="NavItem" parent="">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:gravity">center</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+    <style name="NavIcon" parent="">
+        <item name="android:layout_width">22dp</item>
+        <item name="android:layout_height">22dp</item>
+    </style>
+    <style name="NavLabel" parent="">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textSize">11sp</item>
+        <item name="android:layout_marginTop">2dp</item>
+        <item name="android:textColor">@color/text2</item>
+        <item name="android:maxLines">1</item>
     </style>
 </resources>

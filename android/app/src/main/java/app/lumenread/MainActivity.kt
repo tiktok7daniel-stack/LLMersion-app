@@ -4,15 +4,18 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.text.SpannableString
+import android.text.Spannable
+import android.text.style.ForegroundColorSpan
 import android.view.LayoutInflater
-import android.view.Menu
-import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.ProgressBar
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -37,7 +40,8 @@ class MainActivity : BaseActivity() {
         setTheme(R.style.Theme_LumenRead)          // leave the splash theme
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        toolbar("", back = false)
+        NavBar.bind(this, NavBar.Tab.HOME)
+        headline()
         list = findViewById(R.id.docs)
         empty = findViewById(R.id.empty)
         list.layoutManager = LinearLayoutManager(this)
@@ -47,8 +51,9 @@ class MainActivity : BaseActivity() {
             picker.launch(arrayOf("application/pdf", "text/plain", "text/markdown"))
         }
         findViewById<View>(R.id.pasteBtn).setOnClickListener { pasteDialog() }
-        findViewById<View>(R.id.vocabBtn).setOnClickListener { startActivity(Intent(this, VocabActivity::class.java)) }
-        findViewById<View>(R.id.settingsBtn).setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
+        findViewById<View>(R.id.tutorBtn).setOnClickListener { startActivity(Intent(this, TutorActivity::class.java)) }
+        findViewById<View>(R.id.aboutBtn).setOnClickListener { startActivity(Intent(this, AboutActivity::class.java)) }
+        findViewById<View>(R.id.statDueBox).setOnClickListener { startActivity(Intent(this, FlashcardActivity::class.java)) }
 
         // unpack the offline dictionary in the background on first run
         lifecycleScope.launch(Dispatchers.IO) { runCatching { Dict.ensureLoaded(applicationContext) } }
@@ -81,29 +86,57 @@ class MainActivity : BaseActivity() {
         }
     }
 
+    /** "Read. Listen. Speak. Understand." with the last word in the brand gold. */
+    private fun headline() {
+        val text = getString(R.string.tagline).replace(". ", ".\n")
+        val s = SpannableString(text)
+        val lastStart = text.trimEnd('.', ' ').lastIndexOf('\n') + 1
+        s.setSpan(ForegroundColorSpan(ContextCompat.getColor(this, R.color.accent)),
+            lastStart, text.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        findViewById<TextView>(R.id.headline).text = s
+    }
+
     private fun refresh() {
         lifecycleScope.launch {
             docs = withContext(Dispatchers.IO) { Db.listDocs() }
+            val words = withContext(Dispatchers.IO) { Db.words() }
             list.adapter?.notifyDataSetChanged()
             empty.visibility = if (docs.isEmpty()) View.VISIBLE else View.GONE
+
+            val now = System.currentTimeMillis()
+            findViewById<TextView>(R.id.statWords).text = words.size.toString()
+            findViewById<TextView>(R.id.statLearned).text = words.count { it.known }.toString()
+            findViewById<TextView>(R.id.statDue).text = words.count { !it.known && it.due <= now }.toString()
+
+            // the hero card continues the most recent document, or invites you to open one
+            val hero = findViewById<View>(R.id.hero)
+            val first = docs.firstOrNull()
+            if (first == null) {
+                findViewById<TextView>(R.id.heroLabel).setText(R.string.start_reading)
+                findViewById<TextView>(R.id.heroTitle).setText(R.string.start_reading_sub)
+                findViewById<TextView>(R.id.heroMeta).text = ""
+                findViewById<ProgressBar>(R.id.heroProgress).visibility = View.GONE
+                hero.setOnClickListener { picker.launch(arrayOf("application/pdf", "text/plain", "text/markdown")) }
+            } else {
+                val (hash, title, pages) = first
+                val (done, total) = withContext(Dispatchers.IO) { readingProgress(hash) }
+                findViewById<TextView>(R.id.heroLabel).setText(R.string.continue_reading)
+                findViewById<TextView>(R.id.heroTitle).text = title
+                findViewById<TextView>(R.id.heroMeta).text =
+                    getString(R.string.pages_n, pages) + "  ·  " + (if (total > 0) 100 * done / total else 0) + "%"
+                findViewById<ProgressBar>(R.id.heroProgress).apply {
+                    visibility = View.VISIBLE; max = maxOf(1, total); progress = done
+                }
+                hero.setOnClickListener { openReader(hash) }
+            }
         }
     }
 
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menu.add(0, 1, 0, R.string.tutor).setIcon(R.drawable.ic_chat)
-            .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
-        menu.add(0, 2, 1, R.string.about).setIcon(R.drawable.ic_info)
-            .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when (item.itemId) {
-            1 -> startActivity(Intent(this, TutorActivity::class.java))
-            2 -> startActivity(Intent(this, AboutActivity::class.java))
-            else -> return super.onOptionsItemSelected(item)
-        }
-        return true
+    /** (sentences read, sentences in total) for a cached document */
+    private fun readingProgress(hash: String): Pair<Int, Int> {
+        val d = Db.getDoc(hash) ?: return 0 to 0
+        val total = d.paras.filter { it.speakable }.sumOf { TextUtil.sentences(it.text).size }
+        return Db.getProgress(hash).coerceAtMost(total) to total
     }
 
     // ------------------------------------------------------------ opening

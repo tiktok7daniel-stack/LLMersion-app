@@ -26,7 +26,7 @@ object Prefs {
 
     /** system | light | dark | black */
     var theme: String
-        get() = str("theme", "system")
+        get() = str("theme", "dark")
         set(v) = put("theme", v)
 
     var showTranslation: Boolean

@@ -131,4 +131,16 @@
 
     <string name="tutor_needs_server">حدّد عنوان خادم المعلّم من الإعدادات أولًا.</string>
     <string name="tutor_unreachable">تعذّر الوصول إلى خادم المعلّم. تأكد من أنه يعمل وأنه على الشبكة نفسها.</string>
+    <string name="nav_home">الرئيسية</string>
+    <string name="nav_words">الكلمات</string>
+    <string name="nav_review">المراجعة</string>
+    <string name="nav_settings">الإعدادات</string>
+    <string name="continue_reading">تابع القراءة</string>
+    <string name="start_reading">ابدأ القراءة</string>
+    <string name="start_reading_sub">افتح ملف PDF أو الصق نصًا إنجليزيًا</string>
+    <string name="open_file_sub">PDF · نص · صفحات ممسوحة</string>
+    <string name="paste_text_sub">أي نص إنجليزي</string>
+    <string name="stat_words">الكلمات</string>
+    <string name="stat_learned">المتعلَّمة</string>
+    <string name="stat_due">للمراجعة</string>
 </resources>

@@ -4,7 +4,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.TextView
 import androidx.lifecycle.lifecycleScope
-import com.google.android.material.progressindicator.LinearProgressIndicator
+import android.widget.ProgressBar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -25,7 +25,7 @@ class FlashcardActivity : BaseActivity() {
     private lateinit var ctx: TextView
     private lateinit var hint: TextView
     private lateinit var grades: View
-    private lateinit var rail: LinearProgressIndicator
+    private lateinit var rail: ProgressBar
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

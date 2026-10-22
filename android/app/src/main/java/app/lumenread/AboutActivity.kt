@@ -15,6 +15,7 @@ class AboutActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_scroll)
         toolbar(getString(R.string.about))
+        NavBar.bind(this, NavBar.Tab.NONE)
         val box = findViewById<LinearLayout>(R.id.content)
         val dp = resources.displayMetrics.density
         val version = runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull() ?: ""

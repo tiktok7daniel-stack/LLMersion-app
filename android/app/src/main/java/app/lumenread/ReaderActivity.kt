@@ -29,8 +29,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.google.android.material.progressindicator.LinearProgressIndicator
+import android.widget.ImageButton
+import android.widget.ProgressBar
 import com.google.android.material.slider.Slider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -54,8 +54,8 @@ class ReaderActivity : BaseActivity() {
     private lateinit var doc: Doc
     private lateinit var list: RecyclerView
     private lateinit var lm: LinearLayoutManager
-    private lateinit var play: FloatingActionButton
-    private lateinit var progress: LinearProgressIndicator
+    private lateinit var play: ImageButton
+    private lateinit var progress: ProgressBar
     private lateinit var speedBtn: TextView
     private var speaker: Speaker? = null
 
@@ -304,21 +304,31 @@ class ReaderActivity : BaseActivity() {
         // one row per meaning language (Settings → "Meanings when you tap a word"), e.g. Arabic + Italian
         val langs = Prefs.wordLangs
         val box = v.findViewById<android.widget.LinearLayout>(R.id.glosses)
+        val dp = resources.displayMetrics.density
         val glossViews = langs.associateWith { lang ->
-            box.addView(TextView(this).apply {
+            // a glass card per language: small label on top, the meaning below
+            val card = android.widget.LinearLayout(this).apply {
+                orientation = android.widget.LinearLayout.VERTICAL
+                background = ContextCompat.getDrawable(context, R.drawable.bg_glass)
+                setPadding((16 * dp).toInt(), (12 * dp).toInt(), (16 * dp).toInt(), (12 * dp).toInt())
+            }
+            card.addView(TextView(this).apply {
                 text = Langs.name(this@ReaderActivity, lang)
                 textSize = 12f
-                setTextColor(ContextCompat.getColor(context, R.color.text3))
-                setPadding(0, (10 * resources.displayMetrics.density).toInt(), 0, 0)
+                setTextColor(ContextCompat.getColor(context, R.color.accent))
             })
-            TextView(this).apply {
-                textSize = 20f
+            val meaning = TextView(this).apply {
+                textSize = 21f
                 setTextColor(ContextCompat.getColor(context, R.color.text))
                 textDirection = Langs.textDirection(lang)
                 textAlignment = View.TEXT_ALIGNMENT_VIEW_START
                 text = "…"
-                box.addView(this)
             }
+            card.addView(meaning)
+            box.addView(card, android.widget.LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = (8 * dp).toInt() })
+            meaning
         }
         speaker?.speak(word, "word", flush = true)
         v.findViewById<View>(R.id.listen).setOnClickListener { speaker?.speak(word, "word", flush = true) }

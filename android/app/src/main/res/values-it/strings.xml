@@ -131,4 +131,16 @@
 
     <string name="tutor_needs_server">Imposta prima l\'indirizzo del server del tutor nelle Impostazioni.</string>
     <string name="tutor_unreachable">Impossibile raggiungere il server del tutor. Verifica che sia avviato e sulla stessa rete.</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_words">Parole</string>
+    <string name="nav_review">Ripasso</string>
+    <string name="nav_settings">Impostazioni</string>
+    <string name="continue_reading">Continua a leggere</string>
+    <string name="start_reading">Inizia a leggere</string>
+    <string name="start_reading_sub">Apri un PDF o incolla un testo in inglese</string>
+    <string name="open_file_sub">PDF · TXT · pagine scansionate</string>
+    <string name="paste_text_sub">Qualsiasi testo in inglese</string>
+    <string name="stat_words">Parole</string>
+    <string name="stat_learned">Imparate</string>
+    <string name="stat_due">Da ripassare</string>
 </resources>

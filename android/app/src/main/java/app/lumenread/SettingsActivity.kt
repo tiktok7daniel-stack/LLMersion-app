@@ -21,13 +21,16 @@ import java.util.Locale
 
 class SettingsActivity : BaseActivity() {
     private lateinit var box: LinearLayout
+    /** the glass card the next rows go into; each section starts a new one */
+    private lateinit var group: LinearLayout
     private var speaker: Speaker? = null
     private val dp get() = resources.displayMetrics.density
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_scroll)
-        toolbar(getString(R.string.settings))
+        toolbar(getString(R.string.settings), back = false)
+        NavBar.bind(this, NavBar.Tab.SETTINGS)
         box = findViewById(R.id.content)
         speaker = Speaker(this) { render() }
         render()
@@ -106,8 +109,8 @@ class SettingsActivity : BaseActivity() {
         row(getString(R.string.s_clear_documents), "") {
             confirmClear { Db.clearDocs(); java.io.File(filesDir, "docs").deleteRecursively() }
         }
-        note(R.string.privacy)
         row(getString(R.string.about), "") { startActivity(Intent(this, AboutActivity::class.java)) }
+        note(R.string.privacy)
     }
 
     private fun padded(v: View) = FrameLayout(this).apply {
@@ -127,13 +130,19 @@ class SettingsActivity : BaseActivity() {
 
     private fun section(title: Int) {
         box.addView(TextView(this).apply {
-            setText(title); textSize = 13f; setTextColor(ContextCompat.getColor(context, R.color.primary))
-            setPadding(0, (24 * dp).toInt(), 0, (6 * dp).toInt())
+            setText(title); setTextAppearance(R.style.Text_Section)
+            setPadding((4 * dp).toInt(), (22 * dp).toInt(), 0, (8 * dp).toInt())
         })
+        group = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = ContextCompat.getDrawable(context, R.drawable.bg_glass)
+            setPadding((18 * dp).toInt(), (4 * dp).toInt(), (18 * dp).toInt(), (4 * dp).toInt())
+        }
+        box.addView(group, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
     }
 
     private fun note(text: Int) {
-        box.addView(TextView(this).apply {
+        group.addView(TextView(this).apply {
             setText(text); textSize = 13f; setTextColor(ContextCompat.getColor(context, R.color.text3))
             setPadding(0, (2 * dp).toInt(), 0, (8 * dp).toInt())
         })
@@ -153,7 +162,7 @@ class SettingsActivity : BaseActivity() {
         if (value.isNotEmpty()) r.addView(TextView(this).apply {
             text = value; textSize = 14f; setTextColor(ContextCompat.getColor(context, R.color.text2))
         })
-        box.addView(r, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        group.addView(r, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
     }
 
     private fun choice(title: Int, options: List<Pair<String, Int>>, current: String, set: (String) -> Unit) {
@@ -168,7 +177,7 @@ class SettingsActivity : BaseActivity() {
     }
 
     private fun switch(title: Int, value: Boolean, set: (Boolean) -> Unit) {
-        box.addView(MaterialSwitch(this).apply {
+        group.addView(MaterialSwitch(this).apply {
             setText(title); textSize = 16f; isChecked = value
             setPadding(0, (8 * dp).toInt(), 0, (8 * dp).toInt())
             setOnCheckedChangeListener { _, on -> set(on) }
@@ -176,11 +185,11 @@ class SettingsActivity : BaseActivity() {
     }
 
     private fun speedRow() {
-        box.addView(TextView(this).apply {
+        group.addView(TextView(this).apply {
             setText(R.string.s_speed); textSize = 16f; setTextColor(ContextCompat.getColor(context, R.color.text))
             setPadding(0, (12 * dp).toInt(), 0, 0)
         })
-        box.addView(Slider(this).apply {
+        group.addView(Slider(this).apply {
             valueFrom = 0.5f; valueTo = 1.5f; stepSize = 0.1f
             value = (Math.round(Prefs.speed * 10) / 10f).coerceIn(0.5f, 1.5f)
             setLabelFormatter { v -> "%.1f×".format(Locale.US, v) }

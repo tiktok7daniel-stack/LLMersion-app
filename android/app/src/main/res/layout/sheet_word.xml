@@ -2,39 +2,45 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent" android:layout_height="wrap_content"
-    android:orientation="vertical" android:padding="20dp">
+    android:orientation="vertical" android:paddingStart="24dp" android:paddingEnd="24dp"
+    android:paddingTop="8dp" android:paddingBottom="24dp">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
         android:orientation="horizontal" android:gravity="center_vertical" android:layoutDirection="ltr">
-        <TextView android:id="@+id/word" android:layout_width="wrap_content"
-            android:layout_height="wrap_content" android:textSize="26sp" android:textStyle="bold"
-            android:textColor="@color/text" android:fontFamily="serif" android:textDirection="ltr" />
-        <TextView android:id="@+id/ipa" android:layout_width="0dp" android:layout_weight="1"
-            android:layout_height="wrap_content" android:textSize="16sp"
-            android:textColor="@color/text2" android:paddingStart="12dp" android:textDirection="ltr" />
-        <ImageButton android:id="@+id/listen" style="@style/Widget.Material3.Button.IconButton"
-            android:layout_width="48dp" android:layout_height="48dp"
-            android:src="@drawable/ic_volume" android:contentDescription="@string/listen" />
+        <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
+            android:orientation="vertical">
+            <TextView android:id="@+id/word" android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:textSize="32sp"
+                android:textColor="@color/text" android:fontFamily="sans-serif-black" android:textDirection="ltr" />
+            <TextView android:id="@+id/ipa" android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:textSize="16sp"
+                android:textColor="@color/text2" android:textDirection="ltr" />
+        </LinearLayout>
+        <FrameLayout android:id="@+id/listen" android:layout_width="52dp" android:layout_height="52dp"
+            android:background="@drawable/bg_play" android:clickable="true" android:focusable="true"
+            android:contentDescription="@string/listen">
+            <ImageView android:layout_width="24dp" android:layout_height="24dp" android:layout_gravity="center"
+                android:src="@drawable/ic_volume" app:tint="#FFFFFF" android:importantForAccessibility="no" />
+        </FrameLayout>
     </LinearLayout>
-    <!-- one label + meaning per language chosen in Settings (Arabic and Italian by default) -->
+    <!-- one card per meaning language chosen in Settings (Arabic and Italian by default) -->
     <LinearLayout android:id="@+id/glosses" android:layout_width="match_parent"
-        android:layout_height="wrap_content" android:orientation="vertical" />
+        android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginTop="12dp" />
     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:text="@string/definition" android:textColor="@color/text3" android:textSize="12sp"
-        android:layout_marginTop="12dp" />
+        android:text="@string/definition" style="@style/Text.Section" android:layout_marginTop="16dp" />
     <TextView android:id="@+id/def" android:layout_width="match_parent"
         android:layout_height="wrap_content" android:textSize="15sp" android:textColor="@color/text2"
-        android:textDirection="ltr" android:textAlignment="viewStart" />
+        android:textDirection="ltr" android:textAlignment="viewStart" android:layout_marginTop="4dp" />
     <TextView android:id="@+id/saved" android:layout_width="wrap_content"
         android:layout_height="wrap_content" android:text="@string/saved_auto"
-        android:textColor="@color/text3" android:textSize="12sp" android:layout_marginTop="12dp" />
+        style="@style/Text.Caption" android:layout_marginTop="14dp" />
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="horizontal" android:layout_marginTop="8dp">
+        android:orientation="horizontal" android:layout_marginTop="10dp">
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/readHere" android:layout_width="0dp" android:layout_weight="1"
+            android:id="@+id/readHere" style="@style/Button.Gradient" android:layout_width="0dp" android:layout_weight="1"
             android:layout_height="wrap_content" android:text="@string/read_from_here"
             app:icon="@drawable/ic_play" android:layout_marginEnd="8dp" />
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/remove" style="@style/Widget.Material3.Button.OutlinedButton"
+            android:id="@+id/remove" style="@style/Button.Glass"
             android:layout_width="0dp" android:layout_weight="1"
             android:layout_height="wrap_content" android:text="@string/remove_word" />
     </LinearLayout>

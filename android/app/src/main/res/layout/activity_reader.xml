@@ -1,51 +1,52 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent" android:layout_height="match_parent"
-    android:orientation="vertical">
-
-    <com.google.android.material.appbar.MaterialToolbar
-        android:id="@+id/toolbar" android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize" />
-
-    <com.google.android.material.progressindicator.LinearProgressIndicator
-        android:id="@+id/progress" android:layout_width="match_parent"
-        android:layout_height="wrap_content" app:indicatorColor="@color/accent" />
-
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/list" android:layout_width="match_parent"
-        android:layout_height="0dp" android:layout_weight="1"
-        android:paddingStart="16dp" android:paddingEnd="16dp" android:clipToPadding="false"
-        android:paddingBottom="24dp" />
-
-    <LinearLayout android:id="@+id/controls"
-        android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="horizontal" android:gravity="center"
-        android:background="@color/card" android:elevation="8dp"
-        android:paddingTop="6dp" android:paddingBottom="6dp">
-        <ImageButton android:id="@+id/prevPara" style="@style/Widget.Material3.Button.IconButton"
-            android:layout_width="48dp" android:layout_height="48dp"
-            android:src="@drawable/ic_prev" android:contentDescription="@string/prev_paragraph" />
-        <ImageButton android:id="@+id/prevSent" style="@style/Widget.Material3.Button.IconButton"
-            android:layout_width="48dp" android:layout_height="48dp"
-            android:src="@drawable/ic_back" android:contentDescription="@string/prev_sentence" />
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/play" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:layout_marginStart="8dp" android:layout_marginEnd="8dp"
-            app:fabSize="normal" android:src="@drawable/ic_play"
-            android:contentDescription="@string/play" />
-        <ImageButton android:id="@+id/nextSent" style="@style/Widget.Material3.Button.IconButton"
-            android:layout_width="48dp" android:layout_height="48dp" android:rotationY="180"
-            android:src="@drawable/ic_back" android:contentDescription="@string/next_sentence" />
-        <ImageButton android:id="@+id/nextPara" style="@style/Widget.Material3.Button.IconButton"
-            android:layout_width="48dp" android:layout_height="48dp"
-            android:src="@drawable/ic_next" android:contentDescription="@string/next_paragraph" />
-        <ImageButton android:id="@+id/practice" style="@style/Widget.Material3.Button.IconButton"
-            android:layout_width="48dp" android:layout_height="48dp" android:layout_marginStart="8dp"
-            android:src="@drawable/ic_mic" android:contentDescription="@string/practice" />
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/speed" style="@style/Widget.Material3.Button.TextButton"
-            android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:minWidth="56dp" android:textDirection="ltr" />
+    android:layout_width="match_parent" android:layout_height="match_parent">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
+        android:orientation="vertical" android:fitsSystemWindows="true">
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar" android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize" android:background="@android:color/transparent" />
+        <ProgressBar android:id="@+id/progress" style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent" android:layout_height="4dp"
+            android:layout_marginStart="20dp" android:layout_marginEnd="20dp"
+            android:progressDrawable="@drawable/bg_progress_track" />
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/list" android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:paddingStart="20dp" android:paddingEnd="20dp" android:clipToPadding="false"
+            android:paddingBottom="120dp" />
     </LinearLayout>
-</LinearLayout>
+
+    <!-- floating glass player -->
+    <LinearLayout android:id="@+id/controls"
+        android:layout_width="match_parent" android:layout_height="72dp" android:layout_gravity="bottom"
+        android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_marginBottom="18dp"
+        android:orientation="horizontal" android:gravity="center"
+        android:background="@drawable/bg_glass_pill" android:elevation="12dp"
+        android:paddingStart="8dp" android:paddingEnd="8dp">
+        <ImageButton android:id="@+id/prevPara" android:layout_width="44dp" android:layout_height="44dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_prev" android:contentDescription="@string/prev_paragraph" />
+        <ImageButton android:id="@+id/prevSent" android:layout_width="44dp" android:layout_height="44dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_back" android:contentDescription="@string/prev_sentence" />
+        <ImageButton android:id="@+id/play" android:layout_width="56dp" android:layout_height="56dp"
+            android:layout_marginStart="6dp" android:layout_marginEnd="6dp"
+            android:background="@drawable/bg_play" android:src="@drawable/ic_play" app:tint="#FFFFFF"
+            android:contentDescription="@string/play" />
+        <ImageButton android:id="@+id/nextSent" android:layout_width="44dp" android:layout_height="44dp"
+            android:background="?attr/selectableItemBackgroundBorderless" android:rotationY="180"
+            android:src="@drawable/ic_back" android:contentDescription="@string/next_sentence" />
+        <ImageButton android:id="@+id/nextPara" android:layout_width="44dp" android:layout_height="44dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_next" android:contentDescription="@string/next_paragraph" />
+        <ImageButton android:id="@+id/practice" android:layout_width="44dp" android:layout_height="44dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_mic" android:contentDescription="@string/practice" />
+        <TextView android:id="@+id/speed" android:layout_width="wrap_content" android:layout_height="34dp"
+            android:background="@drawable/bg_chip" android:gravity="center"
+            android:paddingStart="10dp" android:paddingEnd="10dp" android:textDirection="ltr"
+            android:textColor="@color/text" android:textSize="13sp" android:fontFamily="sans-serif-medium" />
+    </LinearLayout>
+</FrameLayout>

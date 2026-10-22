@@ -1,20 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- brand palette -->
-    <color name="primary">#1D4ED8</color>
+    <color name="brand_blue">#1D4ED8</color>
+    <color name="brand_blue_light">#3B82F6</color>
+    <color name="brand_indigo">#4F46E5</color>
     <color name="accent">#F59E0B</color>
+    <color name="accent_light">#FCD34D</color>
     <color name="ink">#0F172A</color>
     <color name="paper">#F8FAFC</color>
     <color name="dark_surface">#0B1220</color>
 
-    <color name="surface">#F8FAFC</color>
+    <!-- light theme -->
+    <color name="primary">#1D4ED8</color>
+    <color name="bg_top">#EEF2FF</color>
+    <color name="bg_bottom">#F8FAFC</color>
+    <color name="glow">#331D4ED8</color>
+    <color name="surface">#F4F6FB</color>
     <color name="card">#FFFFFF</color>
+    <color name="glass">#D9FFFFFF</color>
+    <color name="glass_strong">#F2FFFFFF</color>
+    <color name="glass_stroke">#140F172A</color>
+    <color name="glass_selected">#1A1D4ED8</color>
     <color name="text">#0F172A</color>
     <color name="text2">#475569</color>
     <color name="text3">#64748B</color>
     <color name="rule">#E2E8F0</color>
-    <color name="highlight">#66F59E0B</color>
-    <color name="good">#166534</color>
-    <color name="mid">#92400E</color>
-    <color name="poor">#B91C1C</color>
+    <color name="highlight">#59F59E0B</color>
+    <color name="good">#16A34A</color>
+    <color name="mid">#D97706</color>
+    <color name="poor">#DC2626</color>
+    <color name="on_hero">#FFFFFF</color>
 </resources>
